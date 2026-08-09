@@ -1,0 +1,3 @@
+interface:
+  display_name: "Deterministic Sandwich"
+  short_description: "Script - LLM - script. Make the LLM do less."
