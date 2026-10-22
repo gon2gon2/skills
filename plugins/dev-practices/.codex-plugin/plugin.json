@@ -1,0 +1,31 @@
+{
+  "name": "dev-practices",
+  "version": "0.1.0",
+  "description": "Practices for building agent skills. deterministic-sandwich moves every deterministic step of a skill into a script so the LLM makes exactly one natural-language judgment.",
+  "author": {
+    "name": "gon2gon2"
+  },
+  "homepage": "https://github.com/gon2gon2/skills",
+  "repository": "https://github.com/gon2gon2/skills",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "skill-design",
+    "deterministic",
+    "scripts",
+    "claude",
+    "codex"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Dev Practices",
+    "shortDescription": "Keep deterministic work in scripts so the LLM makes one judgment.",
+    "longDescription": "Practices for building agent skills. deterministic-sandwich moves every deterministic step of a skill into a script so the LLM makes exactly one natural-language judgment.",
+    "developerName": "gon2gon2",
+    "category": "Development",
+    "capabilities": [],
+    "defaultPrompt": [
+      "Use deterministic-sandwich to split this skill into scripts and one judgment."
+    ]
+  }
+}
