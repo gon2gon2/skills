@@ -1,0 +1,33 @@
+{
+  "name": "orca-workflows",
+  "version": "0.2.1",
+  "description": "Workflows that run other coding agents through Orca. rather-than-me sends one brief to the frontier models other than the one you are talking to (Claude Fable, Codex Astra, Cursor Grok, optionally Gemini Argon), collects their independent reviews and compares them with its own view. Works from Claude and Codex. Requires Orca.",
+  "author": {
+    "name": "gon2gon2"
+  },
+  "homepage": "https://github.com/gon2gon2/skills",
+  "repository": "https://github.com/gon2gon2/skills",
+  "license": "MIT",
+  "keywords": [
+    "orca",
+    "orchestration",
+    "review",
+    "second-opinion",
+    "codex",
+    "cursor",
+    "multi-model",
+    "claude"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Orca Workflows",
+    "shortDescription": "Second opinions from the other frontier coding agents, run through Orca.",
+    "longDescription": "Workflows that run other coding agents through Orca. rather-than-me sends one brief to the frontier models other than the one you are talking to (Claude Fable, Codex Astra, Cursor Grok, optionally Gemini Argon), collects their independent reviews and compares them with its own view. Works from Claude and Codex. Requires Orca.",
+    "developerName": "gon2gon2",
+    "category": "Development",
+    "capabilities": [],
+    "defaultPrompt": [
+      "Use rather-than-me to get a second opinion on this."
+    ]
+  }
+}

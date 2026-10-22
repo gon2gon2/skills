@@ -1,0 +1,20 @@
+{
+  "name": "gon2gon2-skills",
+  "interface": {
+    "displayName": "gon2gon2 skills"
+  },
+  "plugins": [
+    {
+      "name": "orca-workflows",
+      "source": {
+        "source": "local",
+        "path": "./plugins/orca-workflows"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Development"
+    }
+  ]
+}

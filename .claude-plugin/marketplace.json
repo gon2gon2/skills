@@ -1,0 +1,28 @@
+{
+  "name": "gon2gon2-skills",
+  "owner": {
+    "name": "gon2gon2"
+  },
+  "metadata": {
+    "description": "gon2gon2's agent skills, packaged as plugins."
+  },
+  "plugins": [
+    {
+      "name": "orca-workflows",
+      "source": "./plugins/orca-workflows",
+      "description": "Workflows that run other coding agents through Orca. rather-than-me sends one brief to the frontier models other than the one you are talking to (Claude Fable, Codex Astra, Cursor Grok, optionally Gemini Argon), collects their independent reviews and compares them with its own view. Works from Claude and Codex. Requires Orca.",
+      "version": "0.2.1",
+      "category": "development",
+      "keywords": [
+        "orca",
+        "orchestration",
+        "review",
+        "second-opinion",
+        "codex",
+        "cursor",
+        "multi-model",
+        "claude"
+      ]
+    }
+  ]
+}
