@@ -23,6 +23,21 @@
         "multi-model",
         "claude"
       ]
+    },
+    {
+      "name": "dev-practices",
+      "source": "./plugins/dev-practices",
+      "description": "Practices for building agent skills. deterministic-sandwich moves every deterministic step of a skill into a script so the LLM makes exactly one natural-language judgment.",
+      "version": "0.1.0",
+      "category": "development",
+      "keywords": [
+        "skills",
+        "skill-design",
+        "deterministic",
+        "scripts",
+        "claude",
+        "codex"
+      ]
     }
   ]
 }
