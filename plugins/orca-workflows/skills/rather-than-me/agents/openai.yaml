@@ -1,0 +1,3 @@
+interface:
+  display_name: "rather-than-me"
+  short_description: "Second opinions from other labs' frontier models, run through Orca."
