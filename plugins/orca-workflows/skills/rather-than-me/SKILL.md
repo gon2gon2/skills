@@ -1,9 +1,8 @@
 ---
 name: rather-than-me
 description: >-
-  Get independent second opinions from the other frontier coding agents through Orca orchestration, then compare
-  them with your own view. Run from Claude it asks Codex (gpt-6-astra) and Cursor (grok-4.7-high); run from Codex it
-  asks Claude (claude-fable-5-1) and Cursor. Use when the user says "rather-than-me", "/rather-than-me",
+  Get independent second opinions from frontier models made by other AI labs, run as Orca workers, then compare
+  their reviews with your own view. The model you are talking to sits out. Use when the user says "rather-than-me", "/rather-than-me",
   "codex랑 cursor한테 리뷰받아", "astra랑 grok한테 물어봐", "다른 모델 의견 받아봐", "second opinion",
   or wants a plan, design, diff, PR or document reviewed by models other than the one they are talking to.
   Requires Orca (https://github.com/stablyai/orca) with its `orca` CLI; it does nothing outside an Orca session.

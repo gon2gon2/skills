@@ -35,4 +35,4 @@ codex plugin add orca-workflows@gon2gon2-skills
 
 These skills drive other coding agents through [Orca](https://github.com/stablyai/orca). They need the Orca app running and its `orca` CLI on your `PATH`, and they do nothing outside an Orca session.
 
-- **[rather-than-me](./plugins/orca-workflows/skills/rather-than-me/SKILL.md)** — Second opinions from the other frontier coding agents. It writes one brief, has the models you are not talking to (Claude, Codex and Cursor, minus the current one) review it independently, and compares their answers with its own view. Works from Claude Code and Codex.
+- **[rather-than-me](./plugins/orca-workflows/skills/rather-than-me/SKILL.md)** — Second opinions from frontier models made by other AI labs. It writes one brief, has those models review it independently (the one you are talking to sits out), and compares their answers with its own view. Works from Claude Code and Codex.
