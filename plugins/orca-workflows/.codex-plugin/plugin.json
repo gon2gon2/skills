@@ -1,7 +1,7 @@
 {
   "name": "orca-workflows",
-  "version": "0.2.1",
-  "description": "Workflows that run other coding agents through Orca. rather-than-me sends one brief to frontier models made by other AI labs, collects their independent reviews and compares them with its own view. Works from Claude Code and Codex. Requires Orca.",
+  "version": "0.3.0",
+  "description": "Workflows that run coding agents through Orca. rather-than-me sends one brief to frontier models made by other AI labs, collects their independent reviews and compares them with its own view. issue-autopilot sets up a scheduled Orca automation that implements a repo's GitHub issues one at a time from a runbook, each in a fresh worktree ending in a PR. Works from Claude Code and Codex. Requires Orca.",
   "author": {
     "name": "gon2gon2"
   },
@@ -16,18 +16,21 @@
     "codex",
     "cursor",
     "multi-model",
-    "claude"
+    "claude",
+    "automation",
+    "github-issues"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Orca Workflows",
-    "shortDescription": "Second opinions from other labs' frontier models, run through Orca.",
-    "longDescription": "Workflows that run other coding agents through Orca. rather-than-me sends one brief to frontier models made by other AI labs, collects their independent reviews and compares them with its own view. Works from Claude Code and Codex. Requires Orca.",
+    "shortDescription": "Second opinions from other labs' models, and a scheduled issue-implementing loop, run through Orca.",
+    "longDescription": "Workflows that run coding agents through Orca. rather-than-me sends one brief to frontier models made by other AI labs, collects their independent reviews and compares them with its own view. issue-autopilot sets up a scheduled Orca automation that implements a repo's GitHub issues one at a time from a runbook, each in a fresh worktree ending in a PR. Works from Claude Code and Codex. Requires Orca.",
     "developerName": "gon2gon2",
     "category": "Development",
     "capabilities": [],
     "defaultPrompt": [
-      "Use rather-than-me to get a second opinion on this."
+      "Use rather-than-me to get a second opinion on this.",
+      "Use issue-autopilot to set up an automation that works through this repo's issues."
     ]
   }
 }

@@ -1,0 +1,3 @@
+interface:
+  display_name: "issue-autopilot"
+  short_description: "An Orca automation that implements a repo's GitHub issues one at a time on a schedule."
