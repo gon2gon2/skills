@@ -20,25 +20,36 @@ status --json` fails, stop and tell the user that Orca is required. Load the ver
 
 ## 0. Pick the reviewers
 
-The reviewers are agents other than you, each on the newest frontier model from its lab. Do not hard-code model ids;
+The reviewers are agents other than you, each on the latest frontier model from its lab. Do not hard-code model ids;
 resolve them on this machine each time, so a new model is used without updating this skill:
 
 | Agent | How to pick the model | Fallback | Output file |
 |---|---|---|---|
 | `claude` | the alias `fable` (Claude Code resolves it to the latest Fable) | the alias `opus`, then the agent's default | `claude-fable.md` |
 | `codex` | `codex debug models`: among entries with `visibility: "list"`, the Astra id (`gpt-<version>-astra`) with the highest version. If there is no Astra, the one whose `description` calls it the frontier or most capable model. Not the lowest `priority`: that ranks the everyday default | the agent's default | `codex-astra.md` |
-| `cursor` | `cursor-agent models`: the Grok id with the highest version number (compare the numbers, ignore prefixes such as `cursor-`), at its `-high` variant, not `-fast` | the agent's default | `cursor-grok.md` |
+| `cursor` (Grok) | `cursor-agent models`: the Grok id with the highest version number (compare the numbers, ignore prefixes such as `cursor-`), at its `-high` variant, not `-fast` | the agent's default | `cursor-grok.md` |
+| `cursor` (Gemini) | `cursor-agent models`: the Gemini id with the highest version number. When several families share that version (today `gemini-4-carbon`, `gemini-4-hydrogen`, `gemini-4-argon`), prefer `argon`; if there is no argon, list the families as written in the question below and let the user's answer decide. Use the `-high` variant | none: leave Gemini out | `cursor-gemini.md` |
 
-- From Claude: Codex and Cursor. From Codex: Claude and Cursor. From any other agent: all three.
-- If the user names reviewers or models, use those instead of the table.
-- These listing commands are read-only. If one is missing or its output has changed shape, use the fallback; do not
-  guess an id from memory.
-- Name each output file after the agent and a short model name (`codex-astra.md`); use `default` when the worker runs
-  on the agent's default model (`codex-default.md`).
+Build the candidate list first:
 
-Before writing the brief, ask the user one question: add Gemini as an extra reviewer (`--agent cursor`, the newest
-Gemini in `cursor-agent models` at its `-high` variant, output `cursor-gemini.md`)? Default to no. Skip the question
-if the user already said.
+- The candidates are the table minus yourself: every row except the one for the agent running this skill, each with
+  the model id its row resolves to. Gemini through Cursor is always a candidate.
+- The listing commands are read-only. If one is missing or its output has changed shape, still offer the candidate,
+  on the row's fallback (`Codex · default`); do not guess an id from memory.
+
+Then ask the user one question, "Which models should review this?", and allow several answers:
+
+- Use your structured question tool when you have one. In Claude Code that is `AskUserQuestion` with
+  `multiSelect: true`, which takes at most 4 options. Without such a tool, or with more candidates than it takes, ask
+  as a plain numbered list.
+- Label each option with the agent and the resolved model (`Codex · gpt-6-astra`).
+- Mark the non-Gemini candidates as the recommended default.
+- The user may also type a model that is not listed. Run it through the agent that serves it.
+- Skip the question when the user already named reviewers or models, and use those. Skip it too when nobody can
+  answer (a scheduled or non-interactive run), and use the recommended default.
+
+Start only the reviewers the user picked. Name each output file after the agent and a short model name
+(`codex-astra.md`); use `default` when the worker runs on the agent's default model (`codex-default.md`).
 
 Orca has no command that lists which agents a machine can run, so find out by starting the workers (step 2) and handle
 failures there.
@@ -89,8 +100,8 @@ If a `worker-start` fails, or a worker stops early, read the error:
 - The agent is not enabled or not installed on this machine (for example, Cursor Agent is not set up): drop that
   reviewer.
 - The model is rejected (unknown, not in the user's plan, or unavailable, e.g. Fable under zero data retention):
-  start the reviewer again on the next fallback in the table, with a matching file name (`claude-opus.md`). When the fallback is the agent's default,
-  omit `--model` (and `--effort`).
+  start the reviewer again on the next fallback in the table, with a matching file name (`claude-opus.md`). When the
+  fallback is the agent's default, omit `--model`. A row with no fallback is dropped.
 - Anything else (not logged in, out of quota): drop that reviewer.
 
 Say in the report which reviewers were dropped or changed model, and why. Continue with whoever started. If no
