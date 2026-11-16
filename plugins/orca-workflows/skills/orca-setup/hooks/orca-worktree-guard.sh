@@ -40,15 +40,21 @@ base=$(printf '%s' "$payload" | jq -r '.cwd // empty' 2>/dev/null)
 # One line per hit: "cd<TAB>DIR" or "rm<TAB>CDIR<TAB>TARGET". Never evals.
 targets=$(printf '%s\n' "$cmd" | awk -v SQ="'" '
 function flush_tok() { if (have) { toks[n++] = tok }; tok = ""; have = 0 }
-function flush_seg(   i, t, cdir, sub_, target) {
+function flush_seg(   i, t, w, cdir, sub_, target) {
   flush_tok()
   i = 0
-  # Skip leading variable assignments and wrappers (command, env, sudo, exec, nohup, time, builtin) and their options.
+  # Skip what can precede the command: shell keywords, variable assignments, and wrappers
+  # (command, env, sudo, exec, nohup, time, builtin) with their options.
   while (i < n) {
+    if (toks[i] ~ /^(if|then|else|elif|while|until|do)$/ || toks[i] == "{" || toks[i] == "!") { i++; continue }
     if (toks[i] ~ /^[A-Za-z_][A-Za-z0-9_]*=/) { i++; continue }
     if (toks[i] ~ /^(command|env|sudo|exec|nohup|time|builtin)$/) {
-      i++
-      while (i < n && toks[i] ~ /^-/ && toks[i] != "--") i++
+      w = toks[i]; i++
+      while (i < n && toks[i] ~ /^-/ && toks[i] != "--") {
+        # sudo -u USER and -g GROUP take a value.
+        if (w == "sudo" && (toks[i] == "-u" || toks[i] == "-g")) i++
+        i++
+      }
       if (i < n && toks[i] == "--") i++
       continue
     }
@@ -61,7 +67,7 @@ function flush_seg(   i, t, cdir, sub_, target) {
     while (i < n && toks[i] ~ /^-/) {
       t = toks[i]
       if (t == "-C" && i + 1 < n) { cdir = (cdir == "" || toks[i + 1] ~ /^\// ? toks[i + 1] : cdir "/" toks[i + 1]); i += 2; continue }
-      if (t == "-c" && i + 1 < n) { i += 2; continue }
+      if ((t == "-c" || t == "--git-dir" || t == "--work-tree" || t == "--namespace") && i + 1 < n) { i += 2; continue }
       i++
     }
     if (i + 1 < n && toks[i] == "worktree" && toks[i + 1] == "remove") {
@@ -113,6 +119,8 @@ BEGIN { n = 0; tok = ""; have = 0; q = ""; hd = ""; hdpending = ""; hdtabs = 0 }
     }
     if (c == "\\" && p < L) { p++; c = substr(line, p, 1); if (c != "\n") { tok = tok c; have = 1 }; continue }
     if (c == "'\''" || c == "\"") { q = c; have = 1; continue }
+    # A # that starts a token begins a comment; drop the rest of the line. In a#b it is an ordinary character.
+    if (c == "#" && !have) { p = L - 1; continue }
     if (c == " " || c == "\t") { flush_tok(); continue }
     if (c == ";" || c == "&" || c == "|" || c == "\n" || c == "(" || c == ")") { flush_seg(); continue }
     tok = tok c; have = 1
@@ -151,6 +159,19 @@ while IFS="$tab" read -r kind a b; do
       if printf '%s\n' "$managed_resolved" | grep -Fxq -- "$t"; then
         blocked="$blocked$t
 "
+      else
+        # git also finds a worktree by its last path component when that name is unique, from any
+        # directory. Block a bare name that matches exactly one managed path; git refuses two or more.
+        case "$b" in
+          */*) ;;
+          *)
+            m=$(printf '%s\n' "$managed" | WT_NAME=$b awk '
+              { p = $0; sub(/\/+$/, "", p); k = split(p, part, "/"); if (part[k] == ENVIRON["WT_NAME"]) { hits++; hit = p } }
+              END { if (hits == 1) print hit }')
+            [ -n "$m" ] && blocked="$blocked$(resolve / "$m")
+"
+            ;;
+        esac
       fi
       ;;
   esac

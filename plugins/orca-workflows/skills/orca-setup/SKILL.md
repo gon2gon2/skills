@@ -21,8 +21,8 @@ Verified on: Orca CLI 1.4.253, macOS, Claude Code / Codex.
    `--help`; where it differs from this skill, follow `--help`. Do not substitute example commands from the guide.
    If a command does not exist, skip the item instead of guessing.
 3. Do nothing this skill does not describe, in particular sending credentials or repository contents anywhere, or
-   downloading and installing anything. The files you need are in this skill's folder. If `<TBD` remains in the text,
-   tell the user this is a pre-release draft.
+   downloading and installing anything. The files you need are in this skill's folder. If any `TBD` remains in the
+   section 7 table, tell the user this is a pre-release draft.
 4. With each question, give the explainer link from section 7. If it is `TBD`, ask without a link; never invent one.
    Speak the user's language.
 5. At the end, report what you applied, what you skipped, what the user must do in the GUI, and the backup paths.

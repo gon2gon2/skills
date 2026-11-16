@@ -9,10 +9,11 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 tmp=$(cd "$tmp" && pwd -P)
 
-mkdir -p "$tmp/bin" "$tmp/repo" "$tmp/repo-wt" "$tmp/with space" "$tmp/other"
+mkdir -p "$tmp/bin" "$tmp/repo" "$tmp/repo-wt" "$tmp/with space" "$tmp/other" \
+  "$tmp/repo/sub" "$tmp/a/dup" "$tmp/b/dup"
 ln -s "$tmp/repo-wt" "$tmp/link-to-wt"
 
-# Fake orca: reports that it manages repo (primary), repo-wt and "with space".
+# Fake orca: reports that it manages repo (primary), repo-wt, "with space", and two worktrees both named dup.
 cat > "$tmp/bin/orca" <<JSON
 #!/bin/sh
 cat <<'OUT'
@@ -20,6 +21,8 @@ cat <<'OUT'
  {"path":"$tmp/repo","hostId":"local","isMainWorktree":true},
  {"path":"$tmp/repo-wt","hostId":"local","isMainWorktree":false},
  {"path":"$tmp/with space","hostId":"local","isMainWorktree":false},
+ {"path":"$tmp/a/dup","hostId":"local","isMainWorktree":false},
+ {"path":"$tmp/b/dup","hostId":"local","isMainWorktree":false},
  {"path":"$tmp/other","hostId":"ssh-box","isMainWorktree":false}
 ]}}
 OUT
@@ -59,6 +62,29 @@ hello
 X
 git worktree remove $tmp/repo-wt"
 check "git global -c option"     2 "git -c core.quotepath=off worktree remove $tmp/repo-wt"
+check "inside if/then"           2 "if true; then git worktree remove $tmp/repo-wt; fi"
+check "inside else"              2 "if false; then :; else git worktree remove $tmp/repo-wt; fi"
+check "elif condition"           2 "if false; then :; elif git worktree remove $tmp/repo-wt; then :; fi"
+check "after elif/then"          2 "if false; then :; elif true; then git worktree remove $tmp/repo-wt; fi"
+check "if condition"             2 "if git worktree remove $tmp/repo-wt; then :; fi"
+check "brace group"              2 "{ git worktree remove $tmp/repo-wt; }"
+check "for/do loop"              2 "for x in 1; do git worktree remove $tmp/repo-wt; done"
+check "while condition"          2 "while git worktree remove $tmp/repo-wt; do break; done"
+check "negated with !"           2 "! git worktree remove $tmp/repo-wt"
+check "sudo -u value"            2 "sudo -u root git worktree remove $tmp/repo-wt"
+check "sudo -g value"            2 "sudo -g wheel git worktree remove $tmp/repo-wt"
+check "git --git-dir value"      2 "git --git-dir $tmp/repo/.git worktree remove $tmp/repo-wt"
+check "git --work-tree value"    2 "git --work-tree $tmp/repo worktree remove $tmp/repo-wt"
+check "git --namespace value"    2 "git --namespace ns worktree remove $tmp/repo-wt"
+check "git --git-dir= form"      2 "git --git-dir=$tmp/repo/.git worktree remove $tmp/repo-wt"
+check "command before a comment" 2 "git worktree remove $tmp/repo-wt # cleanup"
+check "# inside a word"          2 "echo a#b; git worktree remove $tmp/repo-wt"
+
+# git finds a worktree by its last path component, so a bare name works from any directory.
+check "basename-only target"     2 "git worktree remove repo-wt" "$tmp/repo/sub"
+if grep -Fq "orca worktree rm --worktree \"path:$tmp/repo-wt\"" "$tmp/err"; then
+  pass=$((pass + 1)); echo "ok   basename message names the managed path"
+else fail=$((fail + 1)); echo "FAIL basename message names the managed path"; cat "$tmp/err"; fi
 
 # Payload whose command is an array, as in Codex
 payload=$(jq -nc --arg c "git worktree remove $tmp/repo-wt" --arg d "$tmp/repo" '{tool_input:{command:["bash","-lc",$c]},cwd:$d}')
@@ -87,6 +113,12 @@ X"
 check "inside <<- heredoc"       0 "cat <<-X
 	git worktree remove $tmp/repo-wt
 	X"
+check "inside a comment"         0 "git status # then; git worktree remove $tmp/repo-wt"
+check "comment on its own line"  0 "# git worktree remove $tmp/repo-wt
+git status"
+check "a#b is one token"         0 "git worktree remove $tmp/repo-wt#x"
+check "ambiguous basename"       0 "git worktree remove dup" "$tmp/repo/sub"
+check "unknown basename"         0 "git worktree remove not-orca" "$tmp/repo/sub"
 check "here-string is not heredoc" 2 "cat <<< hi; git worktree remove $tmp/repo-wt"
 check "inline bypass"            0 "ORCA_WT_GUARD=off git worktree remove $tmp/repo-wt"
 check "orca not installed"       0 "git worktree remove $tmp/repo-wt" "$tmp/repo" "$tmp/noorca"

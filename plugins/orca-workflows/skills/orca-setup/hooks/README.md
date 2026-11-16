@@ -52,8 +52,14 @@ Requires `jq` (included with macOS 15 and later). Without it the hook blocks not
   - deleting the folder directly, as in `rm -rf <wt>`
   - commands inside `sh -c "..."` or `bash -c "..."`
   - paths built from variables or `$(...)`
-- It looks past wrappers such as `command`, `env` and `sudo`. Heredoc bodies are treated as data, not commands, and
-  ignored.
+  - commands passed to `xargs`
+  - wrappers it does not know, for example `rtk git ...`
+  - paths that differ from the managed path only in letter case
+- It looks past wrappers such as `command`, `env` and `sudo`, and past shell keywords such as `then`, `do` and `{`.
+  Heredoc bodies and comments are treated as data, not commands, and ignored.
+- git finds a worktree by its last path component, so a target written as a bare name is blocked when exactly one
+  managed worktree has that name. This also blocks a worktree of the same name in another repository; bypass with
+  `ORCA_WT_GUARD=off`.
 - If `jq` or `orca` is missing, or the app does not respond, it lets the command through.
 - To bypass once, prefix the command with `ORCA_WT_GUARD=off`.
 - Undo: remove the hook entry you added and the script file.
