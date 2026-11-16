@@ -1,17 +1,19 @@
 #!/bin/sh
-# orca-worktree-guard.sh — Claude Code / Codex PreToolUse 훅
+# orca-worktree-guard.sh — PreToolUse hook for Claude Code and Codex
 #
-# Orca 가 관리하는 워크트리를 `git worktree remove` 로 지우려 하면 실행 전에 막고
-# `orca worktree rm` 명령을 알려 준다. Orca 에 등록되지 않은 경로는 그대로 통과한다.
+# Blocks `git worktree remove` on a worktree Orca manages, before it runs, and suggests
+# the `orca worktree rm` command instead. Paths Orca does not know about pass through.
 #
-# 입력: stdin 으로 훅 payload(JSON). `tool_input.command` 를 읽는다.
-#       Codex 처럼 command 가 배열이면 `bash -lc <script>` 의 script 를, 아니면 이어 붙인 문자열을 본다.
-# 출력: 막을 때 stderr 에 안내를 쓰고 exit 2. 그 밖에는 exit 0.
+# Input: the hook payload (JSON) on stdin; reads `tool_input.command`.
+#        If command is an array (as in Codex), checks the script of `bash -lc <script>`,
+#        otherwise the joined string.
+# Output: when blocking, a message on stderr and exit 2. Otherwise exit 0.
 #
-# 판단할 수 없으면 통과시킨다(fail open): jq 나 orca 가 없거나, Orca 앱이 응답하지 않을 때.
-# 이 훅은 실수를 줄이는 장치이지 보안 경계가 아니다. 변수 확장이나 $(...) 로 만든 경로는 보지 못한다.
+# Fails open when it cannot decide: jq or orca missing, or the Orca app not responding.
+# This guards against mistakes; it is not a security boundary. It cannot see paths built
+# from variables or $(...).
 #
-# 우회: 명령 앞에 `ORCA_WT_GUARD=off` 를 붙이거나 환경 변수 ORCA_WT_GUARD=off.
+# Bypass: prefix the command with `ORCA_WT_GUARD=off`, or set ORCA_WT_GUARD=off in the environment.
 
 set -u
 
@@ -26,21 +28,22 @@ cmd=$(printf '%s' "$payload" | jq -r '
     else tostring end' 2>/dev/null) || exit 0
 [ -n "$cmd" ] || exit 0
 
-# 빠른 통과: 관련 없는 명령은 orca 를 부르지 않는다.
+# Fast path: unrelated commands never call orca.
 case "$cmd" in *worktree*remove*) ;; *) exit 0 ;; esac
 case "$cmd" in *ORCA_WT_GUARD=off*) exit 0 ;; esac
 
 base=$(printf '%s' "$payload" | jq -r '.cwd // empty' 2>/dev/null)
 [ -n "$base" ] || base=$PWD
 
-# 셸 명령을 토큰으로 나눠 `cd DIR` 과 `git [-C DIR] worktree remove [opts] TARGET` 만 뽑는다.
-# 출력 한 줄: "cd<TAB>DIR" 또는 "rm<TAB>CDIR<TAB>TARGET". eval 하지 않는다.
+# Tokenizes the shell command and extracts only `cd DIR` and
+# `git [-C DIR] worktree remove [opts] TARGET`.
+# One line per hit: "cd<TAB>DIR" or "rm<TAB>CDIR<TAB>TARGET". Never evals.
 targets=$(printf '%s\n' "$cmd" | awk -v SQ="'" '
 function flush_tok() { if (have) { toks[n++] = tok }; tok = ""; have = 0 }
 function flush_seg(   i, t, cdir, sub_, target) {
   flush_tok()
   i = 0
-  # 앞의 변수 대입과 감싸는 명령(command, env, sudo, exec, nohup, time, builtin)과 그 옵션을 건너뛴다.
+  # Skip leading variable assignments and wrappers (command, env, sudo, exec, nohup, time, builtin) and their options.
   while (i < n) {
     if (toks[i] ~ /^[A-Za-z_][A-Za-z0-9_]*=/) { i++; continue }
     if (toks[i] ~ /^(command|env|sudo|exec|nohup|time|builtin)$/) {
@@ -75,7 +78,7 @@ function flush_seg(   i, t, cdir, sub_, target) {
 }
 BEGIN { n = 0; tok = ""; have = 0; q = ""; hd = ""; hdpending = ""; hdtabs = 0 }
 {
-  # heredoc 본문은 명령이 아니라 데이터다. 구분자 줄이 나올 때까지 건너뛴다.
+  # A heredoc body is data, not commands. Skip it until the delimiter line.
   if (hd != "") {
     t = $0
     if (hdtabs) sub(/^\t+/, "", t)
@@ -120,7 +123,7 @@ END { flush_seg() }
 ')
 [ -n "$targets" ] || exit 0
 
-# 경로를 절대 경로로. 디렉터리가 있으면 심볼릭 링크까지 풀고, 없으면 글자 그대로 붙인다.
+# Make a path absolute. If the directory exists, resolve symlinks too; otherwise join it as written.
 resolve() { # resolve BASE PATH
   p=$2
   case "$p" in "~") p=$HOME ;; "~/"*) p=$HOME/${p#"~/"} ;; esac
