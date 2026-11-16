@@ -13,7 +13,8 @@
 # This guards against mistakes; it is not a security boundary. It cannot see paths built
 # from variables or $(...).
 #
-# Bypass: prefix the command with `ORCA_WT_GUARD=off`, or set ORCA_WT_GUARD=off in the environment.
+# Bypass: put `ORCA_WT_GUARD=off` directly in front of the `git worktree remove` to exempt, or set
+# ORCA_WT_GUARD=off in the environment.
 
 set -u
 
@@ -30,7 +31,6 @@ cmd=$(printf '%s' "$payload" | jq -r '
 
 # Fast path: unrelated commands never call orca.
 case "$cmd" in *worktree*remove*) ;; *) exit 0 ;; esac
-case "$cmd" in *ORCA_WT_GUARD=off*) exit 0 ;; esac
 
 base=$(printf '%s' "$payload" | jq -r '.cwd // empty' 2>/dev/null)
 [ -n "$base" ] || base=$PWD
@@ -40,19 +40,23 @@ base=$(printf '%s' "$payload" | jq -r '.cwd // empty' 2>/dev/null)
 # One line per hit: "cd<TAB>DIR" or "rm<TAB>CDIR<TAB>TARGET". Never evals.
 targets=$(printf '%s\n' "$cmd" | awk -v SQ="'" '
 function flush_tok() { if (have) { toks[n++] = tok }; tok = ""; have = 0 }
-function flush_seg(   i, t, w, cdir, sub_, target) {
+function flush_seg(   i, t, w, off, cdir, sub_, target) {
   flush_tok()
-  i = 0
+  i = 0; off = 0
   # Skip what can precede the command: shell keywords, variable assignments, and wrappers
   # (command, env, sudo, exec, nohup, time, builtin) with their options.
   while (i < n) {
     if (toks[i] ~ /^(if|then|else|elif|while|until|do)$/ || toks[i] == "{" || toks[i] == "!") { i++; continue }
-    if (toks[i] ~ /^[A-Za-z_][A-Za-z0-9_]*=/) { i++; continue }
+    # The inline bypass exempts only the command it prefixes.
+    if (toks[i] ~ /^[A-Za-z_][A-Za-z0-9_]*=/) { if (toks[i] == "ORCA_WT_GUARD=off") off = 1; i++; continue }
     if (toks[i] ~ /^(command|env|sudo|exec|nohup|time|builtin)$/) {
       w = toks[i]; i++
       while (i < n && toks[i] ~ /^-/ && toks[i] != "--") {
-        # sudo -u USER and -g GROUP take a value.
-        if (w == "sudo" && (toks[i] == "-u" || toks[i] == "-g")) i++
+        # command -v and -V only look a command up; nothing in the segment runs.
+        if (w == "command" && (toks[i] == "-v" || toks[i] == "-V")) { i = n; break }
+        # These options take a value in the next token.
+        if (w == "sudo" && toks[i] ~ /^(-u|-g|-p|--user|--group|--prompt)$/) i++
+        else if (w == "env" && (toks[i] == "-u" || toks[i] == "-C")) i++
         i++
       }
       if (i < n && toks[i] == "--") i++
@@ -77,7 +81,7 @@ function flush_seg(   i, t, w, cdir, sub_, target) {
         if (toks[i] !~ /^-/) { target = toks[i]; break }
         i++
       }
-      if (target != "") printf "rm\t%s\t%s\n", (cdir == "" ? "." : cdir), target
+      if (target != "" && !off) printf "rm\t%s\t%s\n", (cdir == "" ? "." : cdir), target
     }
   }
   n = 0; delete toks
@@ -142,7 +146,7 @@ resolve() { # resolve BASE PATH
 
 command -v orca >/dev/null 2>&1 || exit 0
 orca_json=$(orca worktree list --limit 10000 --json 2>/dev/null) || exit 0
-managed=$(printf '%s' "$orca_json" | jq -r '.result.worktrees[]? | select((.hostId // "local") == "local") | .path' 2>/dev/null) || exit 0
+managed=$(printf '%s' "$orca_json" | jq -r '.result.worktrees[]? | select((.hostId // "local") == "local" and .isMainWorktree != true) | .path' 2>/dev/null) || exit 0
 [ -n "$managed" ] || exit 0
 
 managed_resolved=$(printf '%s\n' "$managed" | while IFS= read -r m; do [ -n "$m" ] && resolve / "$m"; done)
@@ -160,16 +164,25 @@ while IFS="$tab" read -r kind a b; do
         blocked="$blocked$t
 "
       else
-        # git also finds a worktree by its last path component when that name is unique, from any
-        # directory. Block a bare name that matches exactly one managed path; git refuses two or more.
+        # git also finds a worktree by its last path component when that name is unique among the
+        # worktrees of the repository it runs in. For a bare name, ask that repository (read-only)
+        # which path it means. If git fails or the name is not unique there, let the command through.
         case "$b" in
           */*) ;;
           *)
-            m=$(printf '%s\n' "$managed" | WT_NAME=$b awk '
-              { p = $0; sub(/\/+$/, "", p); k = split(p, part, "/"); if (part[k] == ENVIRON["WT_NAME"]) { hits++; hit = p } }
+            m=$(GIT_OPTIONAL_LOCKS=0 git -C "$dir" worktree list --porcelain 2>/dev/null | WT_NAME=$b awk '
+              /^worktree / {
+                p = substr($0, 10); sub(/\/+$/, "", p); k = split(p, part, "/")
+                if (part[k] == ENVIRON["WT_NAME"]) { hits++; hit = p }
+              }
               END { if (hits == 1) print hit }')
-            [ -n "$m" ] && blocked="$blocked$(resolve / "$m")
+            if [ -n "$m" ]; then
+              m=$(resolve / "$m")
+              if printf '%s\n' "$managed_resolved" | grep -Fxq -- "$m"; then
+                blocked="$blocked$m
 "
+              fi
+            fi
             ;;
         esac
       fi

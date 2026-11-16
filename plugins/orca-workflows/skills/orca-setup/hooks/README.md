@@ -27,8 +27,8 @@ Requires `jq` (included with macOS 15 and later). Without it the hook blocks not
 
 1. `sh <this folder>/test.sh` runs against a fake `orca` and never touches real worktrees. The last line must be
    `N passed, 0 failed`.
-2. Feed only the payload with a real Orca worktree path `<wt>` (the command is not run). It must exit 2 with the
-   message.
+2. Feed only the payload with the path `<wt>` of a real Orca worktree that is not a main worktree (the command is
+   not run). It must exit 2 with the message.
 
    ```bash
    printf '{"tool_input":{"command":"git worktree remove <wt>"}}' | sh ~/.agents/hooks/orca-worktree-guard.sh
@@ -55,11 +55,15 @@ Requires `jq` (included with macOS 15 and later). Without it the hook blocks not
   - commands passed to `xargs`
   - wrappers it does not know, for example `rtk git ...`
   - paths that differ from the managed path only in letter case
+  - glob and brace expansion in the target, as in `.../repo-wt*` or `.../{repo-wt}`
+  - commands inside backticks
+  - worktrees past the first 10000 that `orca worktree list` returns
 - It looks past wrappers such as `command`, `env` and `sudo`, and past shell keywords such as `then`, `do` and `{`.
   Heredoc bodies and comments are treated as data, not commands, and ignored.
-- git finds a worktree by its last path component, so a target written as a bare name is blocked when exactly one
-  managed worktree has that name. This also blocks a worktree of the same name in another repository; bypass with
-  `ORCA_WT_GUARD=off`.
+- git finds a worktree by its last path component, so for a target written as a bare name the hook asks git
+  (`git worktree list`, read-only) which worktree of that repository the name means, and blocks if Orca manages it.
+- The main worktree of a repository passes through. git refuses to remove it.
 - If `jq` or `orca` is missing, or the app does not respond, it lets the command through.
-- To bypass once, prefix the command with `ORCA_WT_GUARD=off`.
+- To bypass once, put `ORCA_WT_GUARD=off` directly in front of the `git worktree remove` it should exempt. It covers
+  that one removal; others in the same command line are still checked.
 - Undo: remove the hook entry you added and the script file.
