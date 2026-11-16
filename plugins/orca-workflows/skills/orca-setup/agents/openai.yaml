@@ -1,0 +1,5 @@
+interface:
+  display_name: "orca-setup"
+  short_description: "Audit Orca and apply settings with your approval."
+policy:
+  allow_implicit_invocation: false
