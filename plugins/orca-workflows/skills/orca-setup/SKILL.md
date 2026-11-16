@@ -75,9 +75,9 @@ the user the rules take effect from the next session.
 ### R2. Workers keep their card status current
 
 - Ask first: "Do you use the workspace board, or grouping and filtering by status in the sidebar?" If not, skip. Card
-  status is used only on those screens, and R3 cleanup looks at PR state, not cards. R3 never reads a card as a removal
-  check. Its one card step writes `completed` on a merged worktree it keeps, and that bullet is added only when cards
-  are kept by rule (see R3).
+  status is used only on those screens, and R3 cleanup looks at PR state, not cards. Its one card step moves an
+  `in-review` card to `completed` on a merged worktree it keeps, and that bullet is added only when cards are kept by
+  rule (see R3).
 - If the installed Orca's board settings have an auto-sync option (for example, sync with agent turns or with linked
   issues), recommend that first. If you cannot tell, ask the user to open the board settings and check. If they turn
   auto-sync on, do not add the rule below; both would move the same cards.
@@ -105,13 +105,15 @@ the user the rules take effect from the next session.
   (`Right before removing ...`) with:
   `List each one that passes all of these checks, with the reason it qualifies. Do not remove any worktree; the user removes them.`
   and change "the coordinator cleans up" to "the coordinator reviews cleanup".
-- The fourth bullet (`When you keep a worktree whose PR is merged ...`) depends on card status, not on the removal
-  choice. Add it only when cards are kept by rule: R2 was applied in this run, or the file already has a rule with the
-  same meaning. Leave it out if R2 was skipped because the user does not use card status, or because they turned the
-  board's auto-sync on; auto-sync would move the same cards.
+- The fourth bullet (`When you keep a worktree whose PR is merged and its card is still in-review ...`) depends on
+  card status, not on the removal choice. Add it only when cards are kept by rule: R2 was applied in this run, or the
+  file already has a rule with the same meaning as R2. Leave it out if R2 was skipped because the user does not use
+  card status, or because they turned the board's auto-sync on; auto-sync would move the same cards.
 - In the list variant, keep the fourth bullet when that condition holds. Moving a card removes nothing, and with a
   list every merged worktree is kept until the user removes it. Change its opening to
-  `For every worktree whose PR is merged, move its card with` and leave the rest as it is.
+  `For every worktree whose PR is merged and whose card is still in-review, move it with` and leave the rest as it is.
+- The card's current status is `workspaceStatus` in the same `orca worktree ps` row. A card in any other status stays
+  as it is: a worker doing follow-up work in a kept worktree may have set it back to `in-progress`.
 
 ```markdown
 - Remove a worktree only with `orca worktree rm --worktree <selector> --delete-branch`
@@ -128,10 +130,10 @@ the user the rules take effect from the next session.
   prints nothing; `liveTerminalCount` and `unverifiableTerminalCount` are 0; every
   `agents[].state` is `done`. Removing also deletes the local branch. Then say what you
   removed, and list each kept worktree with the check it failed.
-- When you keep a worktree whose PR is merged, move its card with
-  `orca worktree set --worktree <selector> --workspace-status completed` if it is not
-  already there. The worker set it to `in-review` when it opened the PR, and nobody
-  else updates it after the merge.
+- When you keep a worktree whose PR is merged and its card is still `in-review`, move
+  it with `orca worktree set --worktree <selector> --workspace-status completed`. The
+  worker set it to `in-review` when it opened the PR, and nobody else updates it after
+  the merge. Leave a card in any other status alone.
 - In the same pass, report any worktree Orca lists on this machine whose folder no
   longer exists; it needs `orca worktree rm` to clear the entry.
 ```
