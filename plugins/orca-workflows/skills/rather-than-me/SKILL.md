@@ -20,21 +20,26 @@ status --json` fails, stop and tell the user that Orca is required. Load the ver
 
 ## 0. Pick the reviewers
 
-The reviewers are the frontier models of the agents other than you:
+The reviewers are agents other than you, each on a frontier model from its lab. The table holds the defaults; models
+go stale, so treat them as preferences, not requirements:
 
-| Agent | Model | Output file |
-|---|---|---|
-| `claude` | `claude-fable-5-1` | `claude-fable.md` |
-| `codex` | `gpt-6-astra` | `codex-astra.md` |
-| `cursor` | `grok-4.7-high` | `cursor-grok.md` |
+| Agent | Preferred model | Fallback | Output file |
+|---|---|---|---|
+| `claude` | `claude-fable-5-1` | `claude-opus-5-5`, then the agent's default | `claude-<model>.md` |
+| `codex` | `gpt-6-astra` | the agent's default | `codex-<model>.md` |
+| `cursor` | `grok-4.7-high` | the agent's default | `cursor-<model>.md` |
 
 - From Claude: Codex and Cursor. From Codex: Claude and Cursor. From any other agent: all three.
-- Claude Fable is unavailable under zero data retention. If its worker fails to start for that reason, start it again
-  with `claude-opus-5-5` and say so in the report.
+- If the user names reviewers or models, use those instead of the table.
+- Name each output file after the agent and a short model name (`codex-astra.md`, `cursor-grok.md`); use `default`
+  when the worker runs on the agent's default model (`codex-default.md`).
 
 Before writing the brief, ask the user one question: add Gemini 4 Argon (`--agent cursor --model
 gemini-4-argon-high`, output `cursor-argon.md`) as an extra reviewer? Default to no. Skip the question if the user
 already said.
+
+Orca has no command that lists which agents a machine can run, or which models a plan allows, so find out by
+starting the workers (step 2) and handle failures there.
 
 ## 1. Write the brief
 
@@ -77,6 +82,18 @@ orca orchestration worker-start --spec "$(spec claude-fable)" --task-title "<top
 
 Keep each worker's `dispatch` id from the output.
 
+If a `worker-start` fails, or a worker stops early, read the error:
+
+- The agent is not enabled or not installed on this machine (for example, Cursor Agent is not set up): drop that
+  reviewer.
+- The model is rejected (unknown, not in the user's plan, or unavailable, e.g. Claude Fable under zero data
+  retention): start the reviewer again on the next fallback in the table. When the fallback is the agent's default,
+  omit `--model` (and `--effort`).
+- Anything else (not logged in, out of quota): drop that reviewer.
+
+Say in the report which reviewers were dropped or changed model, and why. Continue with whoever started. If no
+reviewer could start, stop and tell the user what failed for each one.
+
 ## 3. Wait and collect
 
 ```bash
@@ -86,7 +103,8 @@ orca orchestration check --wait --types "worker_done,escalation,question" --time
 - Acknowledge each delivery (`--ack <delivery id>`) and keep waiting until every reviewer has reported.
 - Answer a `question` from what you know, and escalate to the user only what is theirs to decide.
 - When a worker is done, read its file, then `orca orchestration worker-release --dispatch <id> --json`.
-- If a worker fails or times out twice, release it and report with the reviews you have. Say so.
+- If a worker fails or times out twice for a reason other than its agent or model (see step 2), release it and
+  report with the reviews you have. Say so.
 - Check `git status`: the reviewers must not have touched anything but their own file.
 
 ## 4. Report
