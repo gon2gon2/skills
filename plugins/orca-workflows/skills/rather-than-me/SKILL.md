@@ -26,14 +26,14 @@ resolve them on this machine each time, so a new model is used without updating 
 | Agent | How to pick the model | Fallback | Output file |
 |---|---|---|---|
 | `claude` | the alias `fable` (Claude Code resolves it to the latest Fable) | the alias `opus`, then the agent's default | `claude-fable.md` |
-| `codex` | `codex debug models`: the entry with `visibility: "list"` and the lowest `priority` | the agent's default | `codex-<model>.md` |
+| `codex` | `codex debug models`: among entries with `visibility: "list"`, the Astra id (`gpt-<version>-astra`) with the highest version. If there is no Astra, the one whose `description` calls it the frontier or most capable model. Not the lowest `priority`: that ranks the everyday default | the agent's default | `codex-astra.md` |
 | `cursor` | `cursor-agent models`: the Grok id with the highest version number (compare the numbers, ignore prefixes such as `cursor-`), at its `-high` variant, not `-fast` | the agent's default | `cursor-grok.md` |
 
 - From Claude: Codex and Cursor. From Codex: Claude and Cursor. From any other agent: all three.
 - If the user names reviewers or models, use those instead of the table.
 - These listing commands are read-only. If one is missing or its output has changed shape, use the fallback; do not
   guess an id from memory.
-- Name each output file after the agent and a short model name (`codex-sol.md`); use `default` when the worker runs
+- Name each output file after the agent and a short model name (`codex-astra.md`); use `default` when the worker runs
   on the agent's default model (`codex-default.md`).
 
 Before writing the brief, ask the user one question: add Gemini as an extra reviewer (`--agent cursor`, the newest
