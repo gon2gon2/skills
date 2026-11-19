@@ -1,6 +1,6 @@
 #!/bin/sh
-# Tests for orca-worktree-guard.sh. Puts a fake `orca` first on PATH, so real Orca state is never touched.
-# The git repositories it needs are throwaway ones under a temp directory.
+# Tests for orca-worktree-guard.sh and orca-worktree-sweep.sh. Puts a fake `orca` first on PATH, so real Orca
+# state is never touched. The git repositories and stamp files they need are throwaway ones under a temp directory.
 # Run: sh hooks/test.sh
 set -u
 
@@ -173,6 +173,124 @@ if [ $? = 0 ]; then pass=$((pass + 1)); echo "ok   env bypass"; else fail=$((fai
 
 printf 'not json' | PATH="$tmp/bin:/usr/bin:/bin" sh "$guard" >/dev/null 2>&1
 if [ $? = 0 ]; then pass=$((pass + 1)); echo "ok   malformed payload"; else fail=$((fail + 1)); echo "FAIL malformed payload"; fi
+
+# ---- orca-worktree-sweep.sh ----
+sweep=$here/orca-worktree-sweep.sh
+
+# Fake orca for the sweep: answers only `worktree ps` and logs every call, so the tests can show that the
+# hook runs nothing else. r1 has repo as primary with three local worktrees (one folder is gone) and one on
+# another host; r2 has a primary and no other worktree; r3 has a primary and one worktree.
+mkswbin() { # mkswbin DIR TRUNCATED
+  mkdir -p "$1"
+  cat > "$1/orca" <<JSON
+#!/bin/sh
+echo "\$*" >> "$tmp/orca-calls"
+[ "\$1 \$2" = "worktree ps" ] || exit 1
+cat <<'OUT'
+{"ok":true,"result":{"truncated":$2,"worktrees":[
+ {"repoId":"r1","path":"$tmp/repo","hostId":"local","isMainWorktree":true},
+ {"repoId":"r1","path":"$tmp/repo-wt","hostId":"local","isMainWorktree":false},
+ {"repoId":"r1","path":"$tmp/with space","hostId":"local","isMainWorktree":false},
+ {"repoId":"r1","path":"$tmp/gone","hostId":"local","isMainWorktree":false},
+ {"repoId":"r1","path":"$tmp/other","hostId":"ssh-box","isMainWorktree":false},
+ {"repoId":"r2","path":"$tmp/a","hostId":"local","isMainWorktree":true},
+ {"repoId":"r3","path":"$tmp/b","hostId":"local","isMainWorktree":true},
+ {"repoId":"r3","path":"$tmp/wt/b/feat","hostId":"local","isMainWorktree":false},
+ {"repoId":null,"path":"$tmp/wt","hostId":"local","isMainWorktree":false}
+]}}
+OUT
+JSON
+  chmod +x "$1/orca"; ln -s "$(command -v jq)" "$1/jq"
+}
+mkswbin "$tmp/swbin" false
+mkswbin "$tmp/swbin-trunc" true
+# An orca that does not answer, and one that answers with something that is not JSON.
+mkdir -p "$tmp/swbin-down" "$tmp/swbin-junk" "$tmp/empty"
+printf '#!/bin/sh\nexit 1\n' > "$tmp/swbin-down/orca"; printf '#!/bin/sh\necho not json\n' > "$tmp/swbin-junk/orca"
+chmod +x "$tmp/swbin-down/orca" "$tmp/swbin-junk/orca"
+ln -s "$(command -v jq)" "$tmp/swbin-down/jq"; ln -s "$(command -v jq)" "$tmp/swbin-junk/jq"
+
+states=0
+# sweep_run CWD [SOURCE] [PATH] [STATE_DIR]: stdout goes to $tmp/out, the exit code to $got.
+# Each run gets a fresh state directory unless one is given.
+sweep_run() {
+  if [ -n "${4-}" ]; then st=$4; else states=$((states + 1)); st=$tmp/state$states; fi
+  jq -nc --arg d "$1" --arg s "${2:-startup}" '{hook_event_name:"SessionStart",cwd:$d,source:$s}' |
+    PATH="${3:-$tmp/swbin:/usr/bin:/bin}" XDG_STATE_HOME="$st" /bin/sh "$sweep" >"$tmp/out" 2>"$tmp/err"
+  got=$?
+}
+# expect NAME TEXT: exit 0, and stdout is one line containing TEXT, or empty when TEXT is "".
+expect() {
+  if [ "$got" = 0 ] && { if [ -z "$2" ]; then [ ! -s "$tmp/out" ]; else
+      [ "$(wc -l < "$tmp/out" | tr -d ' ')" = 1 ] && grep -Fq -- "$2" "$tmp/out"; fi; }; then
+    pass=$((pass + 1)); printf 'ok   %s\n' "$1"
+  else fail=$((fail + 1)); printf 'FAIL %s (exit %s)\n' "$1" "$got"; sed 's/^/     /' "$tmp/out" "$tmp/err"; fi
+}
+
+sweep_run "$tmp/repo";                 expect "sweep: primary with worktrees" "non-primary worktrees on this machine: 3, missing folders: 1."
+expect "sweep: names the primary"      "cleanup pass due for $tmp/repo:"
+sweep_run "$tmp/b";                    expect "sweep: no folder missing" "worktrees on this machine: 1, missing folders: 0."
+sweep_run "$tmp/repo/sub";             expect "sweep: folder inside the primary" "cleanup pass due for $tmp/repo:"
+sweep_run "$tmp/a";                    expect "sweep: primary with no worktrees" ""
+sweep_run "$tmp/repo-wt";              expect "sweep: worker worktree" ""
+sweep_run "$tmp/link-to-wt";           expect "sweep: symlink to a worker worktree" ""
+sweep_run "$tmp/other";                expect "sweep: path Orca lists on another host" ""
+sweep_run "$tmp/wt";                   expect "sweep: folder with no repository" ""
+sweep_run "$tmp/not-orca";             expect "sweep: outside Orca" ""
+sweep_run "$tmp/repo" startup "$tmp/swbin-trunc:/usr/bin:/bin"; expect "sweep: truncated list is flagged" "list was truncated"
+sweep_run "$tmp/repo" resume;          expect "sweep: resumed session" "cleanup pass due"
+
+# Fails open: nothing printed, exit 0.
+sweep_run "$tmp/repo" startup "$tmp/empty";                    expect "sweep: jq not installed" ""
+sweep_run "$tmp/repo" startup "$tmp/noorca:/usr/bin:/bin";     expect "sweep: orca not installed" ""
+sweep_run "$tmp/repo" startup "$tmp/swbin-down:/usr/bin:/bin"; expect "sweep: orca does not answer" ""
+sweep_run "$tmp/repo" startup "$tmp/swbin-junk:/usr/bin:/bin"; expect "sweep: orca output is not JSON" ""
+printf 'not json' | PATH="$tmp/swbin:/usr/bin:/bin" XDG_STATE_HOME="$tmp/state-bad" /bin/sh "$sweep" >"$tmp/out" 2>"$tmp/err"
+got=$?;                                expect "sweep: malformed payload" ""
+jq -nc --arg d "$tmp/repo" '{cwd:$d}' | ORCA_WT_SWEEP=off PATH="$tmp/swbin:/usr/bin:/bin" XDG_STATE_HOME="$tmp/state-off" \
+  /bin/sh "$sweep" >"$tmp/out" 2>"$tmp/err"
+got=$?;                                expect "sweep: env bypass" ""
+
+# No cwd in the payload: falls back to the directory the hook runs in.
+(cd "$tmp/repo" && printf '{}' | PATH="$tmp/swbin:/usr/bin:/bin" XDG_STATE_HOME="$tmp/state-pwd" /bin/sh "$sweep" >"$tmp/out" 2>"$tmp/err")
+got=$?;                                expect "sweep: payload without cwd" "cleanup pass due for $tmp/repo:"
+
+# At most one notice per repository every 24 hours.
+T=$tmp/state-throttle
+sweep_run "$tmp/repo" startup "" "$T"; expect "sweep: first notice" "cleanup pass due"
+if [ -s "$T/orca-worktree-sweep/r1.stamp" ]; then pass=$((pass + 1)); echo "ok   sweep: stamp file written"
+else fail=$((fail + 1)); echo "FAIL sweep: stamp file written"; fi
+sweep_run "$tmp/repo" startup "" "$T"; expect "sweep: second run within 24 hours" ""
+sweep_run "$tmp/repo/sub" resume "" "$T"; expect "sweep: same repository, other folder" ""
+sweep_run "$tmp/b" startup "" "$T";    expect "sweep: another repository still notifies" "cleanup pass due for $tmp/b:"
+echo $(($(date +%s) - 86100)) > "$T/orca-worktree-sweep/r1.stamp"
+sweep_run "$tmp/repo" startup "" "$T"; expect "sweep: stamp 23h55m old" ""
+echo $(($(date +%s) - 86500)) > "$T/orca-worktree-sweep/r1.stamp"
+sweep_run "$tmp/repo" startup "" "$T"; expect "sweep: stamp older than 24 hours" "cleanup pass due"
+sweep_run "$tmp/repo" startup "" "$T"; expect "sweep: stamp renewed by that notice" ""
+echo garbage > "$T/orca-worktree-sweep/r1.stamp"
+sweep_run "$tmp/repo" startup "" "$T"; expect "sweep: unreadable stamp counts as none" "cleanup pass due"
+
+# A run that prints nothing leaves no stamp behind.
+C=$tmp/state-compact
+sweep_run "$tmp/repo" compact "" "$C"; expect "sweep: after compaction" ""
+sweep_run "$tmp/repo" startup "" "$C"; expect "sweep: compaction did not use up the notice" "cleanup pass due"
+N=$tmp/state-none
+sweep_run "$tmp/a" startup "" "$N"; sweep_run "$tmp/repo-wt" startup "" "$N"
+if [ ! -e "$N/orca-worktree-sweep" ]; then pass=$((pass + 1)); echo "ok   sweep: silent runs write no stamp"
+else fail=$((fail + 1)); echo "FAIL sweep: silent runs write no stamp"; fi
+
+# If the stamp cannot be written, stay silent instead of repeating in every session.
+: > "$tmp/state-file"
+sweep_run "$tmp/repo" startup "" "$tmp/state-file"; expect "sweep: stamp cannot be written" ""
+
+# Read-only: the only orca command it ever ran is the listing, and the worktree folders are still there.
+if [ -s "$tmp/orca-calls" ] && ! grep -Fvxq -- "worktree ps --limit 10000 --json" "$tmp/orca-calls"; then
+  pass=$((pass + 1)); echo "ok   sweep: runs only orca worktree ps"
+else fail=$((fail + 1)); echo "FAIL sweep: runs only orca worktree ps"; sort -u "$tmp/orca-calls" 2>/dev/null; fi
+if [ -d "$tmp/repo-wt" ] && [ -d "$tmp/with space" ] && [ -d "$tmp/wt/b/feat" ]; then
+  pass=$((pass + 1)); echo "ok   sweep: worktree folders untouched"
+else fail=$((fail + 1)); echo "FAIL sweep: worktree folders untouched"; fi
 
 echo "$pass passed, $fail failed"
 [ "$fail" = 0 ]
