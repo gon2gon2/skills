@@ -124,8 +124,14 @@ Remove it when its review is posted, its tree is clean and its agent is done. Ne
 
 ## Running it on a schedule
 
-An Orca automation can prompt a session in a worktree that already exists, and that session creates the review
-worktrees. `--workspace` is what stops the automation from creating a worktree of its own on every run:
+An Orca automation runs this skill on a timer. Before creating one, ask the user where each run should happen:
+
+- **In a worktree that already exists.** The automation prompts a session in the worktree the user
+  coordinates from. Nothing is created per run, because each review still gets its own worker worktree in step 2.
+- **In a new worktree per run.** The coordinating session gets a checkout of its own, so nothing touches the
+  user's. Every run then leaves one more worktree to remove, on top of the review worktrees.
+
+In an existing worktree:
 
 ```bash
 orca automations create --name "<repo> review queue" \
@@ -135,8 +141,18 @@ orca automations create --name "<repo> review queue" \
   --prompt "/orca-workflows:review-queue" --reuse-session     # Codex: "$review-queue"
 ```
 
-- The precheck skips the run when nothing needs a review, so no session opens on a quiet day. It runs outside the
-  agent, so give it an absolute path to `queue.py`; `${CLAUDE_PLUGIN_ROOT}` isn't set there.
+In a new worktree per run, swap the `--workspace` line for a repo target and drop `--reuse-session`, which only
+works with an existing worktree:
+
+```bash
+  --repo path:<abs path of the repo> --workspace-mode new-per-run --base-branch origin/<default branch> \
+```
+
+Flags change between Orca versions, so check `orca automations create --help` before running either.
+
+- The precheck skips the run when nothing needs a review, so no session opens (and no worktree is created) on a
+  quiet day. It runs outside the agent, so give it an absolute path to `queue.py`; `${CLAUDE_PLUGIN_ROOT}` isn't
+  set there.
 - The run stops at step 3 with the drafts on screen, because posting waits for the user.
 - `--reuse-session` sends later runs to the previous automation session while it is still open. It isn't the
   session you type in.
