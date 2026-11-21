@@ -1,0 +1,3 @@
+interface:
+  display_name: "review-queue"
+  short_description: "Review the PRs waiting on you, one Orca worker each, and post nothing until you approve."
