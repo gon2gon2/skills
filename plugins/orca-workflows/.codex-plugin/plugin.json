@@ -1,6 +1,6 @@
 {
   "name": "orca-workflows",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Workflows that run coding agents through Orca. rather-than-me sends one brief to frontier models made by other AI labs, collects their independent reviews and compares them with its own view. issue-autopilot sets up a scheduled Orca automation that implements a repo's GitHub issues one at a time from a runbook, each in a fresh worktree ending in a PR. orca-setup audits how you use Orca and applies setup changes one approved item at a time: bundled skills, worktree rules for your agent instructions, hooks that block `git worktree remove` on Orca worktrees and say when a worktree cleanup pass is due, and orca.yaml shared directories. adopt-pet turns your own character art into an Orca pet: a .codex-pet bundle whose animations follow your agents' state, with rows you have no art for filled in, validated against Orca's import rules. review-queue reviews the pull requests waiting on you, one Orca worker per PR, and posts only the draft you approve. Works from Claude Code and Codex. Requires Orca.",
   "author": {
     "name": "gon2gon2"
