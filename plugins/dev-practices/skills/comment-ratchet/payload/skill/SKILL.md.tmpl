@@ -1,0 +1,103 @@
+---
+name: delete-comment
+description: Remove code comments from a part of this repo and lower the comment-lint baseline. Classifies every comment as tautology, stale, excuse or decision record, moves decisions out of the code, files issues for excuses, strips the comments with a syntax-tree check, and ratchets the baseline down. Use for "/delete-comment", "/delete-comment <path>", "delete the comments in <path>", "lower the comment baseline", "주석 지워줘", or when the comment-lint check fails and the comments have to go somewhere.
+---
+
+# /delete-comment
+
+Comments are banned in this repo{{RULE_SENTENCE}}. `{{LINT_DIR}}/baseline.json` lists a
+fingerprint for every comment line that is still allowed. The check fails when a file has a
+comment line the baseline does not list (a new one, or an old one reworded) and when the
+baseline lists lines that are gone. This skill is how the list gets shorter.
+
+The script does everything that needs no judgment. Your one job is the classification in
+step 3 and what follows from it: where each decision goes, and which issues to file.
+
+## 1. Pick the scope
+
+```bash
+{{RUN}} count            # what is left, by language
+{{RUN}} count <path>     # one directory or file
+```
+
+Take the path the user named. With no path, take the directory with the most comment lines.
+`strip` edits TypeScript, JavaScript, Python and shell. YAML, SQL, Dockerfiles and
+`.conf`/`.env`/`.properties` files are counted by the lint and edited by hand.
+
+## 2. List the comments
+
+```bash
+{{RUN}} scan <path> > "$SCRATCH/blocks.json"
+{{RUN}} scan <path> --directives > "$SCRATCH/directives.json"
+```
+
+Each block has `id` (`<file>:<first line>`), `start`, `end`, `own` (true when the comment has
+its lines to itself) and `text`. Lint directives, shebangs and type pragmas are in the second
+list. They are never stripped and never counted.
+
+## 3. Classify every block
+
+Follow [classify-brief.md](classify-brief.md). It defines the four categories and the three
+output files. Up to about 300 blocks, do it yourself. Above that, split the block list by
+directory into chunks of about 250 blocks and give each chunk to one subagent with the brief.
+The subagents write their output files and nothing else.
+
+Check that every block id got exactly one category before going on.
+
+## 4. Move what has to survive
+
+A decision has three possible homes. Take the first one that fits.
+
+1. **The code itself.** If a test, a type, an assertion or a better name can state the rule,
+   write that. A rule the build enforces cannot go stale. Keep it small: one test or one type
+   per rule, and nothing that changes behaviour. Tell the user which rules you encoded.
+2. **An existing decision record** that the comment corrects or extends. Edit that record.
+3. **A new entry.** {{DECISION_HOWTO}}
+
+Excuses: {{ISSUES_HOWTO}} Group them by area. One issue per area with a checklist of the
+shortcuts is enough. Describe what the code does today and the change that removes it.
+
+Tautology and stale comments have nothing to move.
+
+## 5. Look at the directives
+
+Read `directives.json`. A suppression (`eslint-disable`, `@ts-ignore`, `@ts-expect-error`,
+`# noqa`, `# type: ignore`, `# nosec`, `# shellcheck disable`) that hides a correctness or
+safety rule is an excuse in a different spelling. Do not delete it here. List each one in the
+matching issue from step 4 with the rule it silences.
+
+## 6. Find code that reads comments
+
+Stripping passes its syntax check and still breaks anything that reads source as text. Before
+stripping, look for both kinds in the scope:
+
+```bash
+grep -rnE 'sed -n .*"\$0"|grep .*"\$0"' <path>
+grep -rnE "indexOf\(['\"\`](//|/\*|#)|['\"\`]// " <path>
+```
+
+A script that prints its header as `--help` needs its usage text moved into a heredoc. A test
+that slices a source file between two comment markers needs code anchors, or it keeps passing
+while checking nothing. A module that hashes its own source will report a new hash.
+
+## 7. Strip, verify, ratchet
+
+```bash
+{{RUN}} strip <path> --dry-run
+{{RUN}} strip <path>
+{{RUN}} baseline
+{{RUN}} check
+```
+
+`strip` rewrites a file only when the result parses to the same syntax tree (TypeScript
+tokens, Python AST, `bash --pretty-print`). A file it reports as `SKIP` is untouched. Fix
+that one by hand. To strip only some blocks, pass `--ids <file.json>` with an array of ids.
+
+Then run the suites that cover the scope{{VERIFY_SENTENCE}}. `baseline` only shortens the
+list, and it refuses when a file has a comment line it does not know.
+
+## 8. Report
+
+Say how many blocks fell in each category, how many lines were removed, which rules became
+tests or types, which records and issues were written, what was skipped and why, and the new
+total from `count`.

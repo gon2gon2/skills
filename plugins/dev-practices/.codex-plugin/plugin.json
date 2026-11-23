@@ -1,7 +1,7 @@
 {
   "name": "dev-practices",
-  "version": "0.1.0",
-  "description": "Practices for building agent skills. deterministic-sandwich moves every deterministic step of a skill into a script so the LLM makes exactly one natural-language judgment.",
+  "version": "0.2.0",
+  "description": "Practices for building agent skills and keeping a codebase honest. deterministic-sandwich moves every deterministic step of a skill into a script so the LLM makes exactly one natural-language judgment. comment-ratchet is a setup wizard that bans code comments in a repo: it installs a comment lint with a baseline that only shrinks, a pull-request check and a repo-local delete-comment skill that moves decisions into tests or records and files issues for excuses.",
   "author": {
     "name": "gon2gon2"
   },
@@ -14,18 +14,22 @@
     "deterministic",
     "scripts",
     "claude",
-    "codex"
+    "codex",
+    "comments",
+    "lint",
+    "ratchet"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Dev Practices",
-    "shortDescription": "Keep deterministic work in scripts so the LLM makes one judgment.",
-    "longDescription": "Practices for building agent skills. deterministic-sandwich moves every deterministic step of a skill into a script so the LLM makes exactly one natural-language judgment.",
+    "shortDescription": "Skill design practices and a wizard that bans code comments.",
+    "longDescription": "Practices for building agent skills and keeping a codebase honest. deterministic-sandwich moves every deterministic step of a skill into a script so the LLM makes exactly one natural-language judgment. comment-ratchet is a setup wizard that bans code comments in a repo: it installs a comment lint with a baseline that only shrinks, a pull-request check and a repo-local delete-comment skill that moves decisions into tests or records and files issues for excuses.",
     "developerName": "gon2gon2",
     "category": "Development",
     "capabilities": [],
     "defaultPrompt": [
-      "Use deterministic-sandwich to split this skill into scripts and one judgment."
+      "Use deterministic-sandwich to split this skill into scripts and one judgment.",
+      "Use comment-ratchet to ban code comments in this repo."
     ]
   }
 }

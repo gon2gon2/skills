@@ -1,0 +1,3 @@
+interface:
+  display_name: "Comment Ratchet"
+  short_description: "Ban code comments with a lint, a shrinking baseline and a cleanup skill."

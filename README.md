@@ -34,6 +34,7 @@ codex plugin add orca-workflows@gon2gon2-skills
 ### Dev practices (`dev-practices`)
 
 - **[deterministic-sandwich](./plugins/dev-practices/skills/deterministic-sandwich/SKILL.md)** — Script – LLM – script. Make the LLM do less: every deterministic step lives in a script, and the LLM does exactly one natural-language judgment.
+- **[comment-ratchet](./plugins/dev-practices/skills/comment-ratchet/SKILL.md)** — A setup wizard that bans code comments in a repo and keeps them out. It reads how the repo already works (languages, decision records, skill folders, CI runners, issue tracker) and installs a comment lint for TypeScript, JavaScript, Python, shell, SQL and `#`-style config files, a baseline of comment fingerprints that only shrinks, a pull-request check, and a repo-local `delete-comment` skill. That skill sorts each comment into tautology, stale, excuse or decision, moves decisions into a test, a type or a record, files issues for excuses, and strips comments only when the syntax tree stays the same. Needs Node 22 and git; Python and TypeScript only when the repo has those files.
 
 ### Orca workflows (`orca-workflows`)
 
