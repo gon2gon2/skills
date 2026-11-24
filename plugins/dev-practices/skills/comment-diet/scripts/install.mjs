@@ -10,7 +10,7 @@ const EXIT_CONFLICT = 3;
 const EXIT_CHECK_FAILED = 4;
 
 function fail(code, message) {
-  console.error(`comment-ratchet: ${message}`);
+  console.error(`comment-diet: ${message}`);
   process.exit(code);
 }
 
@@ -138,7 +138,7 @@ for (const item of actions) console.log(`${item.action.padEnd(10)} ${item.relati
 const conflicts = actions.filter((item) => item.action === "conflict");
 if (conflicts.length) fail(EXIT_CONFLICT, `${conflicts.length} file(s) already exist with different content. Compare them, then re-run with --force to replace them.`);
 if (!apply) {
-  console.log("comment-ratchet: dry run, nothing written. Re-run with --apply.");
+  console.log("comment-diet: dry run, nothing written. Re-run with --apply.");
   process.exit(0);
 }
 
@@ -165,5 +165,5 @@ const counted = node(["count", "--json"]);
 if (counted.status === 0) {
   const total = JSON.parse(counted.stdout).total;
   const share = total.sourceLines ? ((total.lines / total.sourceLines) * 100).toFixed(1) : "0";
-  console.log(`comment-ratchet: ${total.lines} comment lines in ${total.withComments} of ${total.files} files (${share}% of ${total.sourceLines} lines), ${total.directives} directives left alone`);
+  console.log(`comment-diet: ${total.lines} comment lines in ${total.withComments} of ${total.files} files (${share}% of ${total.sourceLines} lines), ${total.directives} directives left alone`);
 }

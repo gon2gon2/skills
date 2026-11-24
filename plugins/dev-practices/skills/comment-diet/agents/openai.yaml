@@ -1,0 +1,3 @@
+interface:
+  display_name: "Comment Diet"
+  short_description: "Put a repo's comments on a diet. The count only goes down."

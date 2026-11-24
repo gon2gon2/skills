@@ -1,7 +1,7 @@
 {
   "name": "dev-practices",
   "version": "0.2.0",
-  "description": "Practices for building agent skills and keeping a codebase honest. deterministic-sandwich moves every deterministic step of a skill into a script so the LLM makes exactly one natural-language judgment. comment-ratchet is a setup wizard that bans code comments in a repo: it installs a comment lint with a baseline that only shrinks, a pull-request check and a repo-local delete-comment skill that moves decisions into tests or records and files issues for excuses.",
+  "description": "Practices for building agent skills and keeping a codebase honest. deterministic-sandwich moves every deterministic step of a skill into a script so the LLM makes exactly one natural-language judgment. comment-diet is a setup wizard that bans code comments in a repo: it installs a comment lint with a baseline that only shrinks, a pull-request check and a repo-local delete-comment skill that moves decisions into tests or records and files issues for excuses.",
   "author": {
     "name": "gon2gon2"
   },
@@ -17,7 +17,7 @@
     "codex",
     "comments",
     "lint",
-    "ratchet"
+    "diet"
   ],
   "skills": "./skills/"
 }

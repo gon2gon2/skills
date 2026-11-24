@@ -1,6 +1,6 @@
 ---
 name: delete-comment
-description: Remove code comments from a part of this repo and lower the comment-lint baseline. Classifies every comment as tautology, stale, excuse or decision record, moves decisions out of the code, files issues for excuses, strips the comments with a syntax-tree check, and ratchets the baseline down. Use for "/delete-comment", "/delete-comment <path>", "delete the comments in <path>", "lower the comment baseline", "주석 지워줘", or when the comment-lint check fails and the comments have to go somewhere.
+description: Remove code comments from a part of this repo and lower the comment-lint baseline. Classifies every comment as tautology, stale, excuse or decision record, moves decisions out of the code, files issues for excuses, strips the comments with a syntax-tree check, and lowers the baseline. Use for "/delete-comment", "/delete-comment <path>", "delete the comments in <path>", "lower the comment baseline", "주석 지워줘", or when the comment-lint check fails and the comments have to go somewhere.
 ---
 
 # /delete-comment
@@ -80,7 +80,7 @@ A script that prints its header as `--help` needs its usage text moved into a he
 that slices a source file between two comment markers needs code anchors, or it keeps passing
 while checking nothing. A module that hashes its own source will report a new hash.
 
-## 7. Strip, verify, ratchet
+## 7. Strip, verify, lower the baseline
 
 ```bash
 {{RUN}} strip <path> --dry-run

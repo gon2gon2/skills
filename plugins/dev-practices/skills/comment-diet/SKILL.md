@@ -1,13 +1,19 @@
 ---
-name: comment-ratchet
-description: Setup wizard that bans code comments in a repo and keeps them out. It inspects the repo, installs a comment lint with a baseline that only shrinks, a CI check, and a repo-local /delete-comment skill, and scaffolds a decisions folder when the repo has none. Use for "comment-ratchet", "/comment-ratchet", "ban comments in this repo", "set up the no-comments lint", "주석 금지 린트 깔아줘", "주석 래칫 세팅", or when someone wants a comment cleanup they can repeat and enforce.
+name: comment-diet
+description: Setup wizard that bans code comments in a repo and keeps them out. It inspects the repo, installs a comment lint with a baseline that only shrinks, a CI check, and a repo-local /delete-comment skill, and scaffolds a decisions folder when the repo has none. Use for "comment-diet", "/comment-diet", "ban comments in this repo", "set up the no-comments lint", "주석 다이어트", "주석 금지 린트 깔아줘", or when someone wants a comment cleanup they can repeat and enforce.
 metadata:
   author: gondev
   version: "1.0.0"
-  short-description: Install a no-comments lint, ratchet and cleanup skill into a repo.
+  short-description: Put a repo's comments on a diet. The count only goes down.
 ---
 
-# Comment ratchet
+# Comment diet
+
+> **The scale only goes down.**
+
+A repo does not lose its comments in one sitting. This wizard sets up the diet: a scale
+(the baseline), a weigh-in on every pull request (the check), and a routine for losing a
+little at a time (the `delete-comment` skill). Old comments can wait. New ones cannot land.
 
 Installs four things into the repo you are in, and nothing that depends on this plugin
 afterwards:
@@ -36,7 +42,7 @@ how this repo already works.
 
    ```bash
    SKILL="${CLAUDE_PLUGIN_ROOT:-<this skill's folder>}"   # Codex, or installed with `npx skills`: the path to this skill
-   [ -d "$SKILL/skills/comment-ratchet" ] && SKILL="$SKILL/skills/comment-ratchet"
+   [ -d "$SKILL/skills/comment-diet" ] && SKILL="$SKILL/skills/comment-diet"
    node "$SKILL/scripts/detect.mjs" . > "$SCRATCH/detected.json"
    ```
 
@@ -111,7 +117,7 @@ how this repo already works.
    on the directory with the most comments. Do not start the cleanup unless asked. Commit
    nothing unless asked.
 
-## What the ratchet catches
+## What the check catches
 
 - A new comment line in any scanned file, including new files.
 - A reworded comment line, since its fingerprint changes.

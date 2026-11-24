@@ -14,7 +14,7 @@ function sh(cwd, command, args) {
 }
 
 function makeRepo() {
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "comment-ratchet-")));
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "comment-diet-")));
   sh(dir, "git", ["init", "-q"]);
   fs.mkdirSync(path.join(dir, "scripts"));
   fs.mkdirSync(path.join(dir, "docs"));

@@ -96,7 +96,7 @@ test("config and sql files are counted by line", async () => {
   assert.equal(countsOf((await analyseText("a.sql", sql)).blocks).lines, 4);
 });
 
-test("the ratchet rejects a new line, a reworded line and a stale baseline", () => {
+test("the check rejects a new line, a reworded line and a stale baseline", () => {
   assert.deepEqual(compareToBaseline({ "a.ts": ["aa", "bb"] }, { "a.ts": ["aa", "bb"] }), { added: [], stale: [] });
   assert.equal(compareToBaseline({ "a.ts": ["aa", "bb", "cc"] }, { "a.ts": ["aa", "bb"] }).added.length, 1);
   assert.equal(compareToBaseline({ "a.ts": ["aa", "zz"] }, { "a.ts": ["aa", "bb"] }).added.length, 1);
