@@ -10,8 +10,8 @@ and to keep true in a record or a test than next to one of the lines it affects.
 
 ## Decision
 
-1. Source files carry no comments. Lint directives, shebangs and type pragmas are not
-   comments.
+1. Source files carry no comments. Lint directives, shebangs, type pragmas and inline
+   script metadata (`# /// script` blocks) are not comments.
 2. `{{LINT_DIR}}/comments.mjs check` enforces this in CI. `baseline.json` lists a fingerprint
    for every comment line that existed when the rule started. A new or reworded comment line
    fails the check. The list only gets shorter.

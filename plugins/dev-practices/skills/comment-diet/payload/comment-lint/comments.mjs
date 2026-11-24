@@ -374,6 +374,29 @@ function pythonOffsets(text, comments) {
   });
 }
 
+function inlineMetadataStarts(text) {
+  const starts = new Set();
+  const lines = text.split("\n");
+  const offsets = [];
+  let offset = 0;
+  for (const line of lines) {
+    offsets.push(offset);
+    offset += line.length + 1;
+  }
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!/^# \/\/\/ [a-zA-Z0-9-]+$/.test(lines[index])) continue;
+    let close = -1;
+    let next = index + 1;
+    for (; next < lines.length && /^#( .*)?$/.test(lines[next]); next += 1) {
+      if (lines[next] === "# ///") close = next;
+    }
+    if (close === -1) continue;
+    for (let line = index; line <= close; line += 1) starts.add(offsets[line]);
+    index = close;
+  }
+  return starts;
+}
+
 export async function analyseText(file, text, pythonComments) {
   const lang = languageOf(file);
   let ranges;
@@ -385,8 +408,10 @@ export async function analyseText(file, text, pythonComments) {
   } else if (lang === "py") ranges = pythonOffsets(text, pythonComments ?? scanPython([file], text)[file]);
   else if (lang === "sh") ranges = shRanges(text);
   else ranges = lineRanges(text, lang);
-  const directives = ranges.filter((range) => isDirective(lang, range.text));
-  ranges = ranges.filter((range) => !isDirective(lang, range.text));
+  const metadata = lang === "py" ? inlineMetadataStarts(text) : new Set();
+  const directive = (range) => metadata.has(range.pos) || isDirective(lang, range.text);
+  const directives = ranges.filter(directive);
+  ranges = ranges.filter((range) => !directive(range));
   return { lang, text, tree, blocks: toBlocks(file, text, ranges), directives: toBlocks(file, text, directives) };
 }
 

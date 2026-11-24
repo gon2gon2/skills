@@ -61,6 +61,16 @@ test("typescript: stripping keeps the syntax tree and tidies blank lines", { ski
   assert.equal(stripped.text, "function f() {\n  const a = 1;\n}\n");
 });
 
+test("python: inline script metadata is not a comment", { skip: noPython }, async () => {
+  const block = [`${HASH} /// script`, `${HASH} requires-python = ">=3.9"`, `${HASH} dependencies = [`, `${HASH}     "requests>=2.31",`, `${HASH} ]`, `${HASH} ///`];
+  const text = [`${HASH}!/usr/bin/env python3`, ...block, `${HASH} own line`, "y = 1", ""].join("\n");
+  assert.deepEqual(await commentTexts("a.py", text), [`${HASH} own line`]);
+  const stripped = await stripText("a.py", text);
+  assert.equal(stripped.text, [`${HASH}!/usr/bin/env python3`, ...block, "y = 1", ""].join("\n"));
+  const unclosed = [`${HASH} /// script`, `${HASH} dependencies = []`, "y = 1", ""].join("\n");
+  assert.equal((await commentTexts("a.py", unclosed)).length, 1);
+});
+
 test("python: strings and directives survive", { skip: noPython }, async () => {
   const text = [`${HASH}!/usr/bin/env python3`, `x = "${HASH} not one"  ${HASH} trailing`, `import os  ${HASH} noqa: F401`, `${HASH} own line`, "y = 1", ""].join("\n");
   assert.deepEqual(await commentTexts("a.py", text), [`${HASH} trailing`, `${HASH} own line`]);

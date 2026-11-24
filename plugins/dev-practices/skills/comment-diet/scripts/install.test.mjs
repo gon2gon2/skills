@@ -114,6 +114,45 @@ test("a second install is a no-op and a changed file is a conflict", () => {
   assert.equal(install(dir, [file, "--apply", "--force"]).status, 0);
 });
 
+test("replacing an older lint lowers the baseline for lines that stopped counting", { skip: sh(".", "python3", ["--version"]).status !== 0 }, () => {
+  const dir = makeRepo();
+  const metadata = [`${HASH} /// script`, `${HASH} dependencies = []`, `${HASH} ///`];
+  fs.writeFileSync(path.join(dir, "scripts/tool.py"), [...metadata, `${HASH} old note`, "x = 1", ""].join("\n"));
+  sh(dir, "git", ["add", "-A"]);
+  const file = plan(dir, { languages: ["py", "sh", "hash"], ci: { kind: "none" } });
+  assert.equal(install(dir, [file, "--apply"]).status, 0);
+
+  const installed = path.join(dir, "tools/comment-lint/comments.mjs");
+  const current = fs.readFileSync(installed, "utf8");
+  const older = current.replace('const metadata = lang === "py" ? inlineMetadataStarts(text) : new Set();', "const metadata = new Set();");
+  assert.notEqual(older, current);
+  fs.writeFileSync(installed, older);
+  fs.rmSync(path.join(dir, "tools/comment-lint/baseline.json"));
+  assert.equal(lint(dir, ["baseline", "--init"]).status, 0);
+  const prints = () => JSON.parse(fs.readFileSync(path.join(dir, "tools/comment-lint/baseline.json"), "utf8")).files["scripts/tool.py"].split(" ");
+  assert.equal(prints().length, 4);
+
+  assert.equal(install(dir, [file, "--apply"]).status, 3);
+  const upgraded = install(dir, [file, "--apply", "--force"]);
+  assert.equal(upgraded.status, 0, upgraded.stderr);
+  assert.match(upgraded.stdout, /baseline lowered from 5 to 2/);
+  assert.equal(prints().length, 1);
+  assert.equal(lint(dir, ["strip", "scripts/tool.py"]).status, 0);
+  assert.equal(fs.readFileSync(path.join(dir, "scripts/tool.py"), "utf8"), [...metadata, "x = 1", ""].join("\n"));
+});
+
+test("a runner label list is written as a list with no trailing space", () => {
+  const dir = makeRepo();
+  const workflow = () => fs.readFileSync(path.join(dir, ".github/workflows/check-comments.yml"), "utf8");
+  const label = "codebuild-ci-${{ github.run_id }}-${{ github.run_attempt }}";
+  assert.equal(install(dir, [plan(dir, { ci: { kind: "github-actions", runsOn: [label] } }), "--apply"]).status, 0);
+  assert.ok(workflow().includes(`    runs-on:\n      - ${label}\n    steps:`));
+  assert.equal(install(dir, [plan(dir, { ci: { kind: "github-actions", runsOn: `\n      - ${label}` } }), "--apply"]).status, 0);
+  assert.ok(!/[ \t]\n/.test(workflow()));
+  assert.equal(install(dir, [plan(dir, { ci: { kind: "github-actions" } }), "--apply", "--force"]).status, 0);
+  assert.ok(workflow().includes("    runs-on: ubuntu-latest\n"));
+});
+
 test("a plan that points outside the repo is refused", () => {
   const dir = makeRepo();
   assert.equal(install(dir, [plan(dir, { lintDir: "../elsewhere" })]).status, 2);
