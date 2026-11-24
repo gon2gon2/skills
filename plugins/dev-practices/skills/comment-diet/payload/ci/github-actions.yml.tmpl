@@ -1,0 +1,17 @@
+name: check-comments
+
+on:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: {{RUNS_ON}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+{{INSTALL_STEP}}      - name: The lint finds comments and leaves code alone
+        run: node --test {{LINT_DIR}}/comments.test.mjs
+      - name: No comment line outside the baseline
+        run: node {{LINT_DIR}}/comments.mjs check

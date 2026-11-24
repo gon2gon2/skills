@@ -1,0 +1,35 @@
+# 0001. No code comments
+
+Date: {{DATE}}
+
+## Context
+
+Comments drift. Some repeat the code, some describe code that is gone, and some excuse a
+shortcut so it can stay. The useful ones record a decision, and a decision is easier to find
+and to keep true in a record or a test than next to one of the lines it affects.
+
+## Decision
+
+1. Source files carry no comments. Lint directives, shebangs and type pragmas are not
+   comments.
+2. `{{LINT_DIR}}/comments.mjs check` enforces this in CI. `baseline.json` lists a fingerprint
+   for every comment line that existed when the rule started. A new or reworded comment line
+   fails the check. The list only gets shorter.
+3. A comment that carried a decision moves, in this order of preference: into a test, type or
+   name that states the rule; into an existing record; into a new record here.
+4. A comment that excused a shortcut becomes an issue.
+5. The `delete-comment` skill runs the removal for a directory and lowers the baseline.
+
+## Turned down
+
+- **A count per file.** Swapping one comment for another keeps the count, so the check would
+  pass.
+- **An allow marker for good comments.** Every comment would get the marker.
+- **Deleting everything in one change.** Templates, CI files and config need their own
+  proof, so the baseline lets them wait.
+
+## Not covered
+
+Python docstrings are strings, and some programs print them as help text. The lint does not
+count them. Languages other than TypeScript, JavaScript, Python, shell, SQL and `#`-style
+config files are not scanned.

@@ -1,0 +1,96 @@
+# Comment classification brief
+
+Every comment in the scope is about to be deleted by a script. Your job is the judgment the
+script cannot do: decide what each comment is, and rescue the knowledge and the confessions
+before they go.
+
+You get a list of comment blocks as `{id, start, end}` (1-based lines, `id` is
+`<file>:<first line>`) and an output directory.
+
+## Rules
+
+- Do not modify the repo. Write only the three output files.
+- Read each file around its blocks. Judge a comment against the code next to it.
+- Every block id appears exactly once in the TSV.
+
+## Categories
+
+One letter per block. When a block mixes kinds, precedence is E > D > S > T.
+
+- **T, tautology.** Repeats what the adjacent code, name or type already says. Section
+  banners and dividers, doc comments that paraphrase the signature, step labels that narrate
+  the next call.
+- **S, stale.** Refers to code, names, files, line numbers, phases or behaviour that no
+  longer exist or no longer match. Commented-out code. Change-log narration that carries no
+  rule for today. When a comment names something you cannot see, one grep decides it.
+- **E, excuse.** The comment lets a shortcut in our own code stand: TODO, FIXME, HACK, "for
+  now", "temporary", "good enough", swallowed errors called best-effort, sleeps or retries
+  that paper over a race, hardcoded values, casts with a justification, "keep in sync with
+  the other copy", skipped validation, a known bug left in place. It counts only if the fix
+  is possible inside this repo. A workaround forced by something we cannot change (a vendor,
+  a platform, a protocol, a dependency) is a decision.
+- **D, decision record.** A non-obvious why: an invariant, an ordering constraint, an
+  external contract, a rule learned from an incident, a rejected alternative, a security
+  boundary, a measured number, a deliberate workaround for something outside our control.
+
+Be strict about D. A comment that explains what the code does in more words is T. D needs a
+reason a competent reader could not recover from the code. A long justification is not
+evidence: check the claim against the code, and if it is false today the block is S.
+
+## Output 1: `<chunk>.tsv`
+
+`<id><TAB><T|S|E|D><TAB><note>`, one line per block. For a D block, the note starts with
+where it should go:
+
+- `encode:` and one line naming the test, type, assertion or rename that would state the
+  rule in code. Use it only when that change is small and cannot alter behaviour.
+- `covered:<record>` when an existing decision record already holds it in full. Leave it out
+  of the fragment. To check, search {{DECISIONS}} for one distinctive term from the comment.
+- `record` otherwise.
+
+## Output 2: `<chunk>.decisions.md`
+
+The `record` decisions, regrouped by topic. This text becomes the only home of that
+knowledge.
+
+```
+## <component>: <subject>
+
+Source: `path/to/file` (`symbolA`, `symbolB`)
+
+- **<symbol or behaviour>.** <the decision>. <why: the constraint, incident, measurement or
+  rejected alternative>.
+```
+
+- One bullet per decision. Merge comments that state the same decision in several places.
+- Keep numbers, limits, error strings, issue references, dates and vendor names exactly.
+  Refer to symbols and files, never to line numbers.
+- Plain declarative sentences. Add nothing the comments and code do not say.
+- If a comment contradicts an existing record or the code, say which one is right.
+
+## Output 3: `<chunk>.issues.json`
+
+One object per shortcut, merging comments about the same one:
+
+```json
+{
+  "title": "Imperative, specific",
+  "area": "the top-level directory or component",
+  "files": ["path"],
+  "symbols": ["functionOrConst"],
+  "hack": "What the code does today and what the comment admitted.",
+  "fix": "The concrete change that removes the shortcut.",
+  "severity": "high | medium | low",
+  "blocks": ["<id>"]
+}
+```
+
+`high` means it can corrupt data, hide a failure or weaken a security boundary. Describe
+only what the code and comment show.
+
+## Report back
+
+Counts per category, the number of decisions and issues, and anything that must not be
+deleted blindly: a header a script prints as its help text, a marker a test searches for, a
+directive the scan listed by mistake. Also report bugs you saw that no comment admitted, in
+a separate list. They are not excuses and get no issue unless the user asks.

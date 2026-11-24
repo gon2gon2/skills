@@ -36,8 +36,8 @@
     {
       "name": "dev-practices",
       "source": "./plugins/dev-practices",
-      "description": "Practices for building agent skills. deterministic-sandwich moves every deterministic step of a skill into a script so the LLM makes exactly one natural-language judgment.",
-      "version": "0.1.0",
+      "description": "Practices for building agent skills and keeping a codebase honest. deterministic-sandwich moves every deterministic step of a skill into a script so the LLM makes exactly one natural-language judgment. comment-diet is a setup wizard that bans code comments in a repo: it installs a comment lint with a baseline that only shrinks, a pull-request check and a repo-local delete-comment skill that moves decisions into tests or records and files issues for excuses.",
+      "version": "0.2.0",
       "category": "development",
       "keywords": [
         "skills",
@@ -45,7 +45,10 @@
         "deterministic",
         "scripts",
         "claude",
-        "codex"
+        "codex",
+        "comments",
+        "lint",
+        "diet"
       ]
     }
   ]
