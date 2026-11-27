@@ -190,6 +190,18 @@ drafts: it posts the drafts approved since the last run, cleans up merged PRs, r
 to, leaves alone every PR whose current head already has a draft, and stops with the drafts on screen. Posting waits for the user. Because finished work is
 skipped, the schedule can be as frequent as hourly.
 
+Before creating one, ask the user where each run should happen:
+
+- **In the primary worktree.** The automation prompts a session in the worktree the user coordinates from.
+  Nothing is created per run, because each review gets its own worker worktree in step 3.
+- **In a new worktree per run.** The coordinating session gets a checkout of its own, so nothing touches the
+  user's. Every run then leaves one more worktree to remove.
+
+Both work, because the drafts live outside the repo and the review worktrees are found by name and by the path
+saved with each draft, whichever session looks.
+
+In the primary worktree:
+
 ```bash
 orca automations create --name "<repo> review queue" \
   --workspace path:<abs path of the primary worktree> --workspace-mode existing \
@@ -198,12 +210,19 @@ orca automations create --name "<repo> review queue" \
   --prompt "/orca-workflows:review-queue scheduled run" --reuse-session     # Codex: "$review-queue scheduled run"
 ```
 
-Flags change between Orca versions, so check `orca automations create --help` before running it.
+In a new worktree per run, swap the `--workspace` line for a repo target and drop `--reuse-session`, which only
+works with an existing worktree:
 
-- Run it in the primary worktree, with `--workspace-mode existing`. The review worktrees outlive a run, so a
-  session in a new worktree per run would lose track of them, and nothing is created per run anyway: each review
-  gets its own worker worktree in step 3.
-- The precheck skips the run when there is nothing to review, post or clean up, so no session opens on a
+```bash
+  --repo path:<abs path of the repo> --workspace-mode new-per-run --base-branch origin/<default branch> \
+```
+
+Flags change between Orca versions, so check `orca automations create --help` before running either.
+
+- In a new worktree per run, the review worktrees must not hang off the run's worktree, which goes away. Create
+  them in step 3 with `--worktree new-top-level --repo path:<abs path of the repo>` instead of `new-child`, and
+  remove the run's own worktree at the end of the run, once its drafts are saved.
+- The precheck skips the run when there is nothing to review, post or clean up, so no session opens (and no worktree is created) on a
   quiet hour. It runs outside the agent, so give it an absolute path to `queue.py`; `${CLAUDE_PLUGIN_ROOT}` isn't
   set there.
 - `--reuse-session` sends later runs to the previous automation session while it is still open. It isn't the
