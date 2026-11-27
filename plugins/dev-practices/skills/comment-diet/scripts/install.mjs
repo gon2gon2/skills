@@ -55,6 +55,16 @@ function render(template, values) {
   return text;
 }
 
+function runsOn(value) {
+  const list = Array.isArray(value);
+  const lines = list ? value : String(value ?? "ubuntu-latest").split("\n");
+  if (lines.some((line) => typeof line !== "string")) fail(EXIT_BAD_PLAN, "ci.runsOn must be a runner label or a list of labels");
+  const kept = lines.map((line) => line.trim()).filter(Boolean);
+  if (kept.length === 0) fail(EXIT_BAD_PLAN, "ci.runsOn must be a runner label or a list of labels");
+  if (!list && lines.length === 1) return ` ${kept[0]}`;
+  return kept.map((line) => `\n      ${list ? "- " : ""}${line}`).join("");
+}
+
 const values = {
   RUN: run,
   LINT_DIR: lintDir,
@@ -63,7 +73,7 @@ const values = {
   DECISION_HOWTO: decisions.howto.trim(),
   ISSUES_HOWTO: issues.howto.trim(),
   VERIFY_SENTENCE: plan.verify ? `: \`${plan.verify}\`` : "",
-  RUNS_ON: ci.runsOn ?? "ubuntu-latest",
+  RUNS_ON: runsOn(ci.runsOn),
   INSTALL_STEP: ci.install ? `      - run: ${ci.install}\n` : "",
   DATE: plan.date ?? new Date().toISOString().slice(0, 10),
 };
@@ -153,10 +163,17 @@ if (agentEdit?.content) fs.writeFileSync(path.join(root, agentEdit.relative), ag
 
 const lint = path.join(root, lintDir, "comments.mjs");
 const node = (extra) => spawnSync(process.execPath, [lint, ...extra], { cwd: root, encoding: "utf8" });
-if (!fs.existsSync(path.join(root, lintDir, "baseline.json"))) {
+const hadBaseline = fs.existsSync(path.join(root, lintDir, "baseline.json"));
+if (!hadBaseline) {
   const created = node(["baseline", "--init"]);
   process.stdout.write(created.stdout);
   if (created.status !== 0) fail(EXIT_CHECK_FAILED, `baseline --init failed:\n${created.stderr}`);
+}
+const lintReplaced = actions.some((item) => item.action === "overwrite" && item.relative.startsWith(`${lintDir}/`));
+if (lintReplaced && hadBaseline) {
+  const lowered = node(["baseline"]);
+  process.stdout.write(lowered.stdout);
+  if (lowered.status !== 0) fail(EXIT_CHECK_FAILED, `the replaced lint could not lower the baseline:\n${lowered.stderr}`);
 }
 const checked = node(["check"]);
 process.stdout.write(checked.stdout);

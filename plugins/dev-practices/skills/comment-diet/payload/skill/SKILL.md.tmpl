@@ -32,8 +32,9 @@ Take the path the user named. With no path, take the directory with the most com
 ```
 
 Each block has `id` (`<file>:<first line>`), `start`, `end`, `own` (true when the comment has
-its lines to itself) and `text`. Lint directives, shebangs and type pragmas are in the second
-list. They are never stripped and never counted.
+its lines to itself) and `text`. Lint directives, shebangs, type pragmas and inline script
+metadata (the `# /// script` block `uv run` reads) are in the second list. They are never
+stripped and never counted.
 
 ## 3. Classify every block
 

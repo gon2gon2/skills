@@ -3,7 +3,7 @@ name: comment-diet
 description: Setup wizard that bans code comments in a repo and keeps them out. It inspects the repo, installs a comment lint with a baseline that only shrinks, a CI check, and a repo-local /delete-comment skill, and scaffolds a decisions folder when the repo has none. Use for "comment-diet", "/comment-diet", "ban comments in this repo", "set up the no-comments lint", "주석 다이어트", "주석 금지 린트 깔아줘", or when someone wants a comment cleanup they can repeat and enforce.
 metadata:
   author: gondev
-  version: "1.0.0"
+  version: "1.0.1"
   short-description: Put a repo's comments on a diet. The count only goes down.
 ---
 
@@ -50,7 +50,8 @@ how this repo already works.
 
    Exit 2 means this is not a git repository. Stop and say so. If `installed` is not empty,
    the lint is already here: say where, and offer the installed `delete-comment` skill
-   instead of a second install.
+   instead of a second install. Go on only when the user wants the installed lint brought
+   up to this version (see "Updating an install").
 
 2. Judge. Read `detected.json`, look at the two or three files it points to (an existing
    decision record, one workflow, the agent instructions file), and write
@@ -86,7 +87,7 @@ how this repo already works.
    | `decisions` | If `decisions` lists a place, use it: set `path`, `scaffold: false`, and write `howto` to match the numbering and file layout you saw there. If it is empty, set `scaffold: true` with `docs/decisions`. |
    | `rule` | The record that states the ban. With `scaffold: true` it is `<path>/0001-no-code-comments.md`. Otherwise leave it out now and fill it in step 4. |
    | `issues.howto` | `gh issue create` for a GitHub remote when `tools.gh` is true. Otherwise name the tracker the repo's docs mention, or ask. Include any label or milestone convention you can see. |
-   | `ci` | `github-actions` when the repo has workflows, with `runsOn` copied from an existing pull-request workflow, exactly as written. A label that no runner answers leaves the job queued forever. `install` is the repo's install command when `ts` is scanned, otherwise omit it. Anything else: `"kind": "none"`, and tell the user the two commands to add to their pipeline. |
+   | `ci` | `github-actions` when the repo has workflows, with `runsOn` copied from an existing pull-request workflow, exactly as written: a string for one label, a JSON array when the workflow lists labels under `runs-on:`. A label that no runner answers leaves the job queued forever. `install` is the repo's install command when `ts` is scanned, otherwise omit it. Anything else: `"kind": "none"`, and tell the user the two commands to add to their pipeline. |
    | `verify` | The command the repo's contributors run before pushing, if one is obvious. |
    | `agentFile` | The first of `agentFiles`, or null. |
 
@@ -124,5 +125,27 @@ how this repo already works.
 - A baseline that still lists lines that are gone, so the list cannot drift upward.
 
 It does not catch Python docstrings, comments in languages it does not scan, or text in the
-excluded paths. Lint suppressions are not comments here. `scan --directives` lists them, and
-the installed skill reviews them.
+excluded paths. Lint suppressions, shebangs, type pragmas and Python inline script metadata
+(the `# /// script` ... `# ///` block that `uv run` reads, PEP 723) are not comments here:
+they are never counted and `strip` leaves them in place. `scan --directives` lists them, and
+the installed skill reviews the suppressions.
+
+## Updating an install
+
+The lint is copied into the repo, so a fix in this plugin reaches a repo only when the
+install is run again. Build `plan.json` from what is already there, without redeciding
+anything: `lintDir`, `exclude`, `languages`, `run`, `rule` and `decisions.path` from
+`<lintDir>/config.json`, `scaffold: false`, both `howto` sentences from the installed
+`delete-comment/SKILL.md`, and `ci.runsOn` and `ci.install` from
+`.github/workflows/check-comments.yml`. Leave `agentFile` out.
+
+Run the dry run. `unchanged` files already match this version. Each `conflict` is a file
+that differs, either because it is older or because someone edited it, and `--force`
+replaces all of them at once. Show the list, and after the user agrees run
+`--apply --force`, then `git diff` so a local edit that was overwritten can be put back.
+
+When `--force` replaces the lint and a baseline exists, the install lowers the baseline
+before it checks, so lines the new lint no longer counts leave `baseline.json`. The lint up
+to plugin version 0.2.0 counted inline script metadata as comments, baselined those lines,
+and `strip` deleted them, which breaks `uv run` on the script. If `strip` ran with that
+version, restore the deleted `# /// script` blocks from git history.
