@@ -21,7 +21,7 @@ import math
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageSequence
 
 FRAME_W, FRAME_H, COLUMNS = 192, 208, 8
 # name -> (row, frames). Orca fills these in when pet.json leaves out frame/animations.
@@ -73,18 +73,23 @@ def clear_background(im: Image.Image, tolerance: int) -> Image.Image:
 
 
 def load_frames(paths: list[str], base: Path, background: str, tolerance: int) -> list[Image.Image]:
+    """Each path is one frame, except an animated GIF/WebP/APNG, which adds all of its frames."""
     out = []
     for p in paths:
         f = (base / p) if not Path(p).is_absolute() else Path(p)
         if not f.is_file():
             die(f"frame not found: {f}")
-        im = Image.open(f).convert("RGBA")
-        if background == "auto":
-            im = clear_background(im, tolerance)
-        box = im.getbbox()
-        if box is None:
-            die(f"frame is fully transparent: {f}")
-        out.append(im.crop(box))
+        src = Image.open(f)
+        for frame in ImageSequence.Iterator(src):
+            im = frame.convert("RGBA")
+            if background == "auto":
+                im = clear_background(im, tolerance)
+            box = im.getbbox()
+            if box is None:
+                continue  # blank frame inside an animation
+            out.append(im.crop(box))
+    if not out:
+        die(f"no visible frames in {paths}")
     return out
 
 

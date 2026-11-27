@@ -90,6 +90,9 @@ Rules:
   | `waving`, `jumping`, `failed` | in the sheet; trigger not confirmed in 1.4.256 | wave, jump, sad |
 
 - Give any number of frames per row. The script stretches or repeats them to the row's fixed count.
+- An animated GIF (or animated WebP/APNG) counts as all of its frames, so one GIF can fill a row. Pick GIFs by
+  what the motion looks like: a dancing or bouncing loop fits `running`, a looking-around or tapping loop
+  fits `waiting`.
 - `style`: `pixel` for pixel art (nearest-neighbour, whole-number scaling), `smooth` for everything else.
 - `background`: `auto` clears a solid corner colour when the image has no transparency; `keep` leaves it.
   Use `keep` if the character touches the image corners.
